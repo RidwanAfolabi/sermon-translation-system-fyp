@@ -1,0 +1,57 @@
+# Sermon Translation System Configuration
+
+# Pre-Service Configuration
+pre_service:
+  translation:
+    source_language: "ms"  # Malay
+    target_language: "en"  # English
+    model_name: "Helsinki-NLP/opus-mt-ms-en"
+    batch_size: 8
+    max_length: 512
+  
+  vetting:
+    min_approval_score: 0.8
+    require_expert_review: true
+    auto_approve_threshold: 0.95
+
+# Live-Service Configuration
+live_service:
+  alignment:
+    window_size: 5.0  # seconds
+    overlap: 1.0      # seconds
+    confidence_threshold: 0.7
+    max_delay: 0.5    # seconds for real-time
+  
+  subtitle:
+    max_chars_per_line: 42
+    max_lines: 2
+    display_duration: 3.0  # seconds
+    fade_in: 0.2
+    fade_out: 0.2
+
+# Post-Service Configuration
+post_service:
+  analytics:
+    metrics:
+      - accuracy
+      - timing_precision
+      - alignment_confidence
+      - expert_correction_rate
+    
+  refinement:
+    min_data_points: 100
+    retrain_threshold: 0.1  # 10% improvement potential
+    backup_models: true
+
+# Data Storage
+storage:
+  translations_dir: "data/translations"
+  logs_dir: "data/logs"
+  audio_dir: "data/audio"
+  database: "sqlite:///sermon_system.db"
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "data/logs/system.log"

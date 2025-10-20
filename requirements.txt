@@ -1,0 +1,23 @@
+# Core dependencies
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Translation
+transformers>=4.30.0
+torch>=2.0.0
+sentencepiece>=0.1.99
+
+# Speech processing
+librosa>=0.10.0
+pydub>=0.25.0
+scipy>=1.10.0
+
+# Real-time processing
+websockets>=11.0
+
+# Data storage
+sqlalchemy>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+pyyaml>=6.0
