@@ -1,0 +1,16 @@
+-- ============================================================================
+-- GitHub SQL Configuration File
+-- ============================================================================
+-- This file contains SQL queries and database operations that will be used
+-- for managing and interacting with GitHub-related data, such as repositories,
+-- issues, pull requests, commits, or user information.
+--
+-- Purpose: Centralized location for GitHub data operations including:
+--   - Data retrieval and analysis
+--   - Database schema definitions
+--   - Query templates for GitHub API data
+--   - Reporting and analytics operations
+--
+-- Note: Update queries as needed based on your specific GitHub integration
+-- requirements and database schema.
+-- ============================================================================

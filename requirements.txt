@@ -1,0 +1,2 @@
+# Python package dependencies for the project
+# Install all required packages using: pip install -r requirements.txt

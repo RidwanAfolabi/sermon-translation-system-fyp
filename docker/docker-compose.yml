@@ -1,0 +1,4 @@
+# Docker Compose configuration for a multi-service application stack
+# This file defines the infrastructure and services required to run the application
+# Services can be orchestrated together using docker-compose up/down commands
+# Used for development, testing, or production deployment environments

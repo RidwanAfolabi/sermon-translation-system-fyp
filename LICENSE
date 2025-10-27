@@ -1,0 +1,24 @@
+/*
+File: LICENSE
+
+Purpose:
+- This file will contain the legal terms that govern use, copying, modification, and distribution of this repository’s source code, binaries, and documentation.
+
+What to include when finalizing:
+- Full, unmodified text of the selected license (e.g., MIT, Apache-2.0, GPL-3.0, or other).
+- Copyright notice: "Copyright (c) <YEAR> <OWNER/ORGANIZATION>".
+- SPDX identifier on the first line if desired (e.g., "SPDX-License-Identifier: MIT").
+- Any required NOTICE text or references for third-party components (kept in a separate NOTICE file if applicable).
+- Dual-licensing or exceptions language, if used, with clear selection rules.
+
+Guidance:
+- Keep this file at the repository root; package managers and build tools auto-detect it.
+- Ensure consistency with project manifests (e.g., package.json `license`, Cargo.toml `license`, pyproject.toml, setup.cfg).
+- Include this file (and any required NOTICE files) in distributed source and binary artifacts.
+- Consult legal counsel for compatibility (e.g., copyleft obligations), patent grants, and trademark usage.
+
+To-do before release:
+- Choose the license and insert its complete text.
+- Fill in correct year(s) and rights holder(s).
+- Add any third-party license attributions required by dependencies.
+*/
