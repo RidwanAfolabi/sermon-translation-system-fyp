@@ -77,4 +77,4 @@ Each phase corresponds to a distinct functional component within the overall sys
 
 ---
 
-> **Note:** This document complements the architecture diagram (`docs/Masjid translator sys architecture.png`) and should be read alongside it to fully understand the data flow and component interactions.
+> **Note:** This document complements the architecture diagram (`docs/Masjid_translator_sys_architecture.png`) and should be read alongside it to fully understand the data flow and component interactions.
