@@ -133,6 +133,41 @@ pytest backend/tests/
 
 ---
 
+## 📅 Project Gantt Chart
+
+| Phase       | Sub-Activity                                   | Estimated Days | Responsible |
+|-------------|------------------------------------------------|----------------|-------------|
+| Planning    | Define project scope & objectives              | 2              | All         |
+| Planning    | Set up GitHub repo & task tracker              | 2              | All         |
+| Planning    | Finalize requirements & timeline                | 3              | All         |
+| Data Prep   | Collect sermon scripts                          | 4              | Student A   |
+| Data Prep   | Collect existing translations                   | 3              | Student A   |
+| Data Prep   | Curate glossary of key terms                   | 4              | Student A   |
+| Data Prep   | Annotate dataset with glossary terms           | 5              | Student A   |
+| Baseline    | Set up ASR (speech-to-text) engine            | 5              | Student B   |
+| Baseline    | Set up baseline translation system              | 5              | Student B   |
+| Baseline    | Develop subtitle rendering prototype            | 4              | Student B   |
+| Fine-Tune   | Prepare domain-specific training data          | 5              | Student A   |
+| Fine-Tune   | Fine-tune MT model                             | 7              | Student A   |
+| Fine-Tune   | Integrate glossary enforcement (constraints)   | 5              | Student A   |
+| Integration  | Integrate ASR with MT                          | 6              | Student B   |
+| Integration  | Implement incremental (piecemeal) rendering    | 6              | Student B   |
+| Integration  | Add logging & confidence flagging system       | 5              | Student C   |
+| Deployment   | Optimize model for offline use                 | 6              | Student C   |
+| Deployment   | Test system on Jetson/NUC/PC                   | 5              | Student C   |
+| Deployment   | Validate performance in offline mode           | 4              | Student C   |
+| Testing      | Conduct accuracy & glossary compliance tests   | 5              | All         |
+| Testing      | Run mock sermon trials                          | 5              | All         |
+| Testing      | Evaluate latency & reliability                  | 4              | All         |
+| Testing      | Analyze logs & flagged segments                 | 4              | All         |
+| Final        | Prepare technical documentation                 | 5              | Student C   |
+| Final        | Prepare user manual & training notes           | 4              | Student C   |
+| Final        | Final presentation & submission                 | 3              | All         |
+
+**Total Estimated Duration:** ~120 days (~17 weeks)
+
+---
+
 ## 🧠 Future Enhancements
 
 * Cloud deployment using **AWS / GCP AI services**
