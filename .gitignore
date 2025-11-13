@@ -1,0 +1,17 @@
+# Environment files
+.env
+venv/
+venv311/
+__pycache__/
+*.py[cod]
+*.pyo
+*.log
+*.sqlite*
+*.db
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.vscode/
+*.env.*
+/tests/__pycache__/
