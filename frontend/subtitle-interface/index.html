@@ -1,22 +1,30 @@
-<!-- This is the index page for the subtitle interface -->
+<!-- frontend/subtitle-interface/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-    <title>Subtitle Interface</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Masjid Live Subtitle Display</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
-        <h1>Subtitle Interface</h1>
-    </header>
-    <main>
-        <section id="subtitle-section">
-            <h2>Subtitles</h2>
-            <div id="subtitle-list"></div>
-        </section>
-    </main>
-    <script src="script.js"></script>
+  <!-- Header -->
+  <header style="text-align:center; margin-top:20px;">
+    <h1 style="font-size:1.5rem; color:#333;">Masjid Live Subtitle Interface</h1>
+  </header>
+
+  <!-- Status / Connection info -->
+  <div id="status-box"
+       style="text-align:center; font-size:1rem; color:gray; margin-top:15px;">
+    Connecting to khutbah stream...
+  </div>
+
+  <!-- Subtitle display area -->
+  <div id="subtitle-box"
+       style="text-align:center; font-size:2rem; font-weight:bold; margin-top:150px; transition:opacity 0.3s ease;">
+    <!-- Live subtitles will appear here -->
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>

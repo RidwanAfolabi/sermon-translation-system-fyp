@@ -1,8 +1,37 @@
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    color: #333;
+  background-color: #f9fafb;
+  color: #222;
+  font-family: 'Segoe UI', sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
-h1 {
-    text-align: center;
+
+#subtitle-box {
+  font-weight: 600;
+  padding: 20px;
+}
+
+#status-box {
+  font-style: italic;
+  color: #777;
+}
+
+
+#subtitle-box {
+  transition: opacity 0.3s ease;
+  font-size: 1.5em;
+  line-height: 1.4;
+  text-align: center;
+  color: white;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 80%;
+  margin: auto;
+}
+
+.subtitle-line {
+  margin: 6px 0;
 }
