@@ -8,7 +8,7 @@ import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.db.session import SessionLocal
 from backend.api.utils import db_utils
-from ml_pipeline.alignment_module.speech_listener import listen_and_transcribe
+from ml_pipeline.speech_recognition.whisper_listener import listen_and_transcribe  # use Faster-Whisper
 from ml_pipeline.alignment_module.aligner import match_spoken_to_segment
 
 router = APIRouter()

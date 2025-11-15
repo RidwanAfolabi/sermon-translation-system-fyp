@@ -15,4 +15,12 @@ htmlcov/
 .vscode/
 *.env.*
 /tests/__pycache__/
+
+# Project files
+models/
+vosk_models/
+.cache/
+.huggingface/
+**/__pycache__/
+*.wav
 backend/models_unused/
