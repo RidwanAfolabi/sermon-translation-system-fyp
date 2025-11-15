@@ -1,68 +1,124 @@
-// frontend/subtitle-interface/script.js
+(function() {
+  const statusBox = document.getElementById("status-box");
+  const subtitleBox = document.getElementById("subtitle-box");
+  const spokenBox = document.getElementById("spoken-box");
+  const similarityBox = document.getElementById("similarity-box");
+  const matchedMalay = document.getElementById("matched-malay");
+  const matchedEnglish = document.getElementById("matched-english");
+  const historyList = document.getElementById("history-list");
+  const form = document.getElementById("connect-form");
+  const sermonInput = document.getElementById("sermon-id");
+  const disconnectBtn = document.getElementById("disconnect-btn");
 
-// ---------- CONFIGURATION ----------
-const SERVER_URL = "ws://127.0.0.1:8000/live/stream?sermon_id=2"; 
-// ↑ Adjust sermon_id to match the one you uploaded + translated
+  let ws = null;
 
-// ---------- UI ELEMENTS ----------
-const subtitleBox = document.getElementById("subtitle-box");
-const statusBox = document.getElementById("status-box");
-
-// ---------- STATE ----------
-let activeBatch = []; // stores currently visible lines (max 5)
-
-// ---------- FUNCTIONS ----------
-function renderSubtitles() {
-  subtitleBox.innerHTML = activeBatch
-    .map(line => `<div class="subtitle-line">${line}</div>`)
-    .join("");
-  subtitleBox.style.opacity = 1;
-}
-
-function showSubtitle(text) {
-  activeBatch.push(text);
-
-  // If more than 5 lines, clear and start a new batch
-  if (activeBatch.length > 5) {
-    subtitleBox.style.opacity = 0; // fade-out before reset
-    setTimeout(() => {
-      activeBatch = [text];
-      renderSubtitles();
-    }, 300);
-  } else {
-    renderSubtitles();
+  function setStatus(msg) {
+    statusBox.textContent = msg;
   }
-}
 
-function updateStatus(message) {
-  statusBox.innerText = message;
-}
-
-// ---------- WEBSOCKET CONNECTION ----------
-const ws = new WebSocket(SERVER_URL);
-
-ws.onopen = () => {
-  console.log("✅ Connected to live subtitle stream");
-  updateStatus("Connected. Waiting for sermon subtitles...");
-};
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-
-  if (data.status === "completed") {
-    updateStatus("🕌 Khutbah concluded. Jazakallah khair.");
-    subtitleBox.innerHTML = "";
-  } else if (data.english_text) {
-    showSubtitle(data.english_text);
+  function addHistory(spoken, score, matched) {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span class="spoken">${escapeHtml(spoken)}</span>
+      <span class="score">${matched ? "✅" : "❌"} ${score.toFixed(3)}</span>
+    `;
+    historyList.prepend(li);
+    while (historyList.children.length > 40) {
+      historyList.lastChild.remove();
+    }
   }
-};
 
-ws.onerror = (error) => {
-  console.error("❌ WebSocket error:", error);
-  updateStatus("Connection error. Please check the backend.");
-};
+  function escapeHtml(s) {
+    return (s || "").replace(/[&<>"']/g, c => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[c]));
+  }
 
-ws.onclose = () => {
-  console.log("🔌 Disconnected from subtitle stream.");
-  updateStatus("Disconnected from stream.");
-};
+  function connect(sermonId) {
+    if (ws) {
+      ws.close();
+    }
+    setStatus("Connecting...");
+    ws = new WebSocket(`ws://127.0.0.1:8000/live/stream?sermon_id=${sermonId}`);
+
+    ws.onopen = () => {
+      setStatus(`Connected (sermon ${sermonId})`);
+    };
+
+    ws.onclose = () => {
+      setStatus("Disconnected.");
+    };
+
+    ws.onerror = (e) => {
+      setStatus("WebSocket error.");
+      console.error("WS error", e);
+    };
+
+    ws.onmessage = (ev) => {
+      let data;
+      try {
+        data = JSON.parse(ev.data);
+      } catch {
+        return;
+      }
+      // initial handshake payload
+      if (data.status === "started") {
+        setStatus(`Live started: ${data.segments_loaded} segments loaded.`);
+        return;
+      }
+      if (!data.spoken) return;
+
+      // Raw spoken
+      spokenBox.textContent = data.spoken;
+
+      // Similarity + candidate
+      similarityBox.textContent = `Similarity score: ${data.score.toFixed(3)} ${data.matched ? "(matched)" : "(no match)"}`;
+
+      // Matched segment details
+      if (data.matched && data.segment) {
+        matchedMalay.textContent = `Matched Malay (#${data.segment.order}): ${data.segment.malay_text}`;
+        // english_text only if backend adds it; fallback blank
+        if (data.segment.english_text) {
+          matchedEnglish.textContent = `Matched English: ${data.segment.english_text}`;
+        } else {
+          matchedEnglish.textContent = "";
+        }
+        subtitleBox.textContent = data.segment.english_text || data.segment.malay_text;
+        subtitleBox.className = "subtitle-box matched";
+      } else {
+        matchedMalay.textContent = "";
+        matchedEnglish.textContent = "";
+        subtitleBox.textContent = data.spoken;
+        subtitleBox.className = "subtitle-box unmatched";
+      }
+
+      addHistory(data.spoken, data.score, data.matched);
+    };
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = sermonInput.value.trim();
+    if (!id) return;
+    connect(id);
+  });
+
+  disconnectBtn.addEventListener("click", () => {
+    if (ws) {
+      ws.close();
+      ws = null;
+    }
+  });
+
+  // Optional: auto-connect if sermon_id provided in URL ?sermon=2
+  const params = new URLSearchParams(window.location.search);
+  const autoId = params.get("sermon");
+  if (autoId) {
+    sermonInput.value = autoId;
+    connect(autoId);
+  }
+})();

@@ -1,4 +1,3 @@
-<!-- frontend/subtitle-interface/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,21 +7,46 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Header -->
   <header style="text-align:center; margin-top:20px;">
     <h1 style="font-size:1.5rem; color:#333;">Masjid Live Subtitle Interface</h1>
   </header>
 
-  <!-- Status / Connection info -->
-  <div id="status-box"
-       style="text-align:center; font-size:1rem; color:gray; margin-top:15px;">
-    Connecting to khutbah stream...
+  <!-- Status -->
+  <div id="status-box" class="status-box">Connecting to khutbah stream...</div>
+
+  <!-- Current live subtitle (English or Malay depending on match) -->
+  <div id="subtitle-box" class="subtitle-box"></div>
+
+  <!-- Spoken (raw ASR) always shown -->
+  <div class="panel">
+    <h3>Live Captured Speech (Malay)</h3>
+    <div id="spoken-box" class="spoken-box"></div>
   </div>
 
-  <!-- Subtitle display area -->
-  <div id="subtitle-box"
-       style="text-align:center; font-size:2rem; font-weight:bold; margin-top:150px; transition:opacity 0.3s ease;">
-    <!-- Live subtitles will appear here -->
+  <!-- Match details -->
+  <div class="panel">
+    <h3>Alignment & Similarity</h3>
+    <div id="similarity-box" class="similarity-box">Waiting for audio...</div>
+    <div id="matched-malay" class="seg-text"></div>
+    <div id="matched-english" class="seg-text"></div>
+  </div>
+
+  <!-- Recent history (rolling) -->
+  <div class="panel">
+    <h3>Recent Captures</h3>
+    <ul id="history-list" class="history-list"></ul>
+  </div>
+
+  <!-- Sermon selector (optional) -->
+  <div class="panel">
+    <h3>Connect</h3>
+    <form id="connect-form">
+      <label>Sermon ID:
+        <input id="sermon-id" type="number" min="1" required placeholder="e.g. 2">
+      </label>
+      <button type="submit">Start Stream</button>
+      <button type="button" id="disconnect-btn">Disconnect</button>
+    </form>
   </div>
 
   <script src="script.js"></script>
