@@ -7,8 +7,8 @@ Maintains same API: translate_text_batch(malay_sentences) → [{"text":..., "con
 
 from typing import List, Dict
 import torch
+from torch.nn import functional as F  # NEW
 from transformers import MarianMTModel, MarianTokenizer
-import random
 import logging
 import json
 import os
@@ -28,8 +28,7 @@ model = MarianMTModel.from_pretrained(MODEL_NAME)
 
 # Use GPU if available
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-model.to(DEVICE)
-model.eval()
+model.to(DEVICE).eval()
 
 # Optional glossary loading (for religious terms)
 GLOSSARY_PATH = os.path.join(os.path.dirname(__file__), "glossary.json")
@@ -50,6 +49,35 @@ def apply_glossary(text: str) -> str:
     return text
 
 
+def _compute_confidences(sequences: torch.Tensor, scores: list, eos_id: int | None) -> list[float]:
+    """
+    Geometric mean of per-token probabilities (excluding EOS).
+    sequences: [batch, total_len]; scores: list[T] of logits [batch, vocab].
+    """
+    batch_size = sequences.size(0)
+    T = len(scores)
+    gen_token_ids = sequences[:, -T:]  # last T tokens correspond to generated portion
+    confidences: list[float] = []
+    for i in range(batch_size):
+        logps = []
+        for t in range(T):
+            token_id = int(gen_token_ids[i, t])
+            if eos_id is not None and token_id == eos_id:
+                break
+            step_logits = scores[t][i]          # [vocab]
+            step_logprobs = F.log_softmax(step_logits, dim=-1)
+            logps.append(float(step_logprobs[token_id]))
+        if not logps:
+            confidences.append(0.0)
+        else:
+            mean_logp = sum(logps) / len(logps)
+            conf = float(torch.exp(torch.tensor(mean_logp)))
+            # clamp to [0,1]
+            conf = max(0.0, min(1.0, conf))
+            confidences.append(conf)
+    return confidences
+
+
 def translate_text_batch(malay_sentences: List[str]) -> List[Dict[str, str]]:
     """
     Translate Malay sentences to English.
@@ -59,19 +87,41 @@ def translate_text_batch(malay_sentences: List[str]) -> List[Dict[str, str]]:
         return []
 
     # Tokenize & translate
-    inputs = tokenizer(malay_sentences, return_tensors="pt", padding=True, truncation=True).to(DEVICE)
-    with torch.no_grad():
-        generated_tokens = model.generate(**inputs, max_length=256)
+    inputs = tokenizer(
+        malay_sentences,
+        return_tensors="pt",
+        padding=True,
+        truncation=True,
+        max_length=256
+    ).to(DEVICE)
 
-    translated_texts = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+    with torch.no_grad():
+        gen_out = model.generate(
+            **inputs,
+            max_length=256,
+            return_dict_in_generate=True,
+            output_scores=True,
+            num_beams=1,
+            do_sample=False,
+            early_stopping=True,
+        )
+
+    sequences = gen_out.sequences
+    scores = gen_out.scores  # list of logits per generation step
+    decoded = tokenizer.batch_decode(sequences, skip_special_tokens=True)
+
+    try:
+        confs = _compute_confidences(sequences, scores, tokenizer.eos_token_id)
+    except Exception as e:
+        logger.warning(f"Confidence computation failed: {e}")
+        confs = [0.0] * len(decoded)
 
     results = []
-    for src, tgt in zip(malay_sentences, translated_texts):
-        # Postprocess translation
+    for tgt, conf in zip(decoded, confs):
         tgt = apply_glossary(tgt.strip())
         results.append({
             "text": tgt,
-            "confidence": round(random.uniform(0.90, 0.99), 2)  # placeholder confidence, need to change later
+            "confidence": round(conf, 3)
         })
 
     logger.info(f"Translated {len(malay_sentences)} sentences via {MODEL_NAME}.")

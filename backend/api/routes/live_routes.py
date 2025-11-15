@@ -5,46 +5,77 @@ Real-time subtitle delivery for the Friday khutbah service.
 """
 
 import asyncio
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+import threading
+import queue
+import logging
+from fastapi import APIRouter, WebSocket, HTTPException
+from sqlalchemy.orm import Session
 from backend.db.session import SessionLocal
-from backend.api.utils import db_utils
-from ml_pipeline.speech_recognition.whisper_listener import listen_and_transcribe  # use Faster-Whisper
+from backend.db import models
+from ml_pipeline.speech_recognition.whisper_listener import listen_and_transcribe, stop_listener
 from ml_pipeline.alignment_module.aligner import match_spoken_to_segment
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
+_text_q: "queue.Queue[str]" = queue.Queue(maxsize=32)
+
+def _asr_worker():
+    for txt in listen_and_transcribe():
+        try:
+            _text_q.put_nowait(txt)
+        except queue.Full:
+            pass
+
 @router.websocket("/stream")
-async def live_stream(websocket: WebSocket):
+async def live_stream(websocket: WebSocket, sermon_id: int):
     await websocket.accept()
-    params = dict(websocket.query_params)
-    sermon_id = int(params.get("sermon_id", 0))
+    db: Session = SessionLocal()
+    sermon = db.query(models.Sermon).filter(models.Sermon.sermon_id == sermon_id).first()
+    if not sermon:
+        await websocket.send_text("Sermon not found.")
+        await websocket.close()
+        db.close()
+        return
+    segments = db.query(models.Segment).filter(models.Segment.sermon_id == sermon_id).order_by(models.Segment.segment_order.asc()).all()
+    await websocket.send_json({"status": "started", "sermon_id": sermon_id, "segments_loaded": len(segments)})
 
-    print(f"✅ Live speech alignment started for sermon {sermon_id}")
-
-    with SessionLocal() as db:
-        segments = db_utils.list_segments_for_sermon(db, sermon_id)
+    threading.Thread(target=_asr_worker, daemon=True).start()
+    dynamic_thresh = 0.55
+    miss_streak = 0
 
     try:
-        batch = []
-        for spoken_chunk in listen_and_transcribe():
-            seg, score = match_spoken_to_segment(spoken_chunk, segments)
-            if not seg or score < 0.6:
-                continue
-
-            english_text = seg.english_text or ""
-            batch.append(english_text)
+        while True:
+            spoken = await asyncio.get_event_loop().run_in_executor(None, _text_q.get)
+            seg, score, cand_id, cand_order = match_spoken_to_segment(spoken, segments, min_score=dynamic_thresh)
+            matched = bool(seg)
+            if matched:
+                miss_streak = 0
+                dynamic_thresh = min(0.60, dynamic_thresh + 0.01)
+            else:
+                miss_streak += 1
+                if miss_streak >= 3:
+                    dynamic_thresh = max(0.50, dynamic_thresh - 0.02)
             await websocket.send_json({
-                "english_text": english_text,
-                "segment_id": seg.segment_id,
-                "similarity": round(score, 2)
+                "spoken": spoken,
+                "score": score,
+                "matched": matched,
+                "segment": None if not matched else {
+                    "segment_id": seg.segment_id,
+                    "order": seg.segment_order,
+                    "malay_text": seg.malay_text,
+                    "english_text": seg.english_text
+                },
+                "candidate": {
+                    "segment_id": cand_id,
+                    "order": cand_order
+                },
+                "threshold": round(dynamic_thresh, 3)
             })
-
-            # After ~5 sentences, clear and start new batch
-            if len(batch) >= 5:
-                await websocket.send_json({"status": "batch_reset"})
-                batch.clear()
-
-            await asyncio.sleep(0.5)  # short delay between detected chunks
-
-    except WebSocketDisconnect:
-        print(f"❌ Client disconnected from sermon {sermon_id}")
+    except Exception as e:
+        logger.error(f"[LIVE] error: {e}")
+    finally:
+        stop_listener()
+        db.close()
+        await websocket.close()
+        logger.info(f"[LIVE] closed sermon_id={sermon_id}")

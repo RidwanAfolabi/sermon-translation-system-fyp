@@ -6,11 +6,78 @@ API endpoints for sermon management: upload, list, get sermon and segments.
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from sqlalchemy.orm import Session
 import csv, io
+import re
+from pathlib import Path
+from typing import Tuple
+try:
+    import docx  # python-docx
+except ImportError:
+    docx = None
+try:
+    from PyPDF2 import PdfReader
+except ImportError:
+    PdfReader = None
 from backend.db.session import SessionLocal, engine
 from backend.db import models
 from backend.api.utils import db_utils
 
 router = APIRouter()
+
+# Accepted uploads
+ACCEPTED_EXTS = {".txt", ".csv", ".md", ".docx", ".pdf", ".rtf"}
+
+def _safe_decode(raw: bytes) -> str:
+    for enc in ("utf-8", "latin-1"):
+        try:
+            return raw.decode(enc)
+        except Exception:
+            continue
+    return raw.decode("utf-8", errors="ignore")
+
+def _extract_text(upload: UploadFile, raw: bytes) -> Tuple[str, bool, str]:
+    """
+    Returns (text_data, is_csv, ext)
+    """
+    ext = Path(upload.filename).suffix.lower()
+    if ext not in ACCEPTED_EXTS:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+
+    if ext == ".csv":
+        return _safe_decode(raw), True, ext
+
+    if ext in {".txt", ".md"}:
+        return _safe_decode(raw), False, ext
+
+    if ext == ".docx":
+        if not docx:
+            raise HTTPException(status_code=500, detail="python-docx not installed")
+        bio = io.BytesIO(raw)
+        d = docx.Document(bio)
+        text = "\n".join(p.text for p in d.paragraphs if p.text and p.text.strip())
+        return text.strip(), False, ext
+
+    if ext == ".pdf":
+        if not PdfReader:
+            raise HTTPException(status_code=500, detail="PyPDF2 not installed")
+        bio = io.BytesIO(raw)
+        reader = PdfReader(bio)
+        pages = []
+        for page in reader.pages:
+            try:
+                pages.append(page.extract_text() or "")
+            except Exception:
+                continue
+        text = "\n".join(pages)
+        return text.strip(), False, ext
+
+    if ext == ".rtf":
+        raw_text = _safe_decode(raw)
+        cleaned = re.sub(r"{\\[^}]+}|\\[A-Za-z]+\d* ?|[{}]", " ", raw_text)
+        cleaned = re.sub(r"\s+", " ", cleaned)
+        return cleaned.strip(), False, ext
+
+    # Fallback
+    return _safe_decode(raw), False, ext
 
 # Dependency to get DB session
 def get_db():
@@ -29,52 +96,57 @@ async def upload_sermon(
     db: Session = Depends(get_db)
 ):
     """
-    Upload a sermon script (text or CSV).
-    - If CSV: expects columns [segment_order, malay_text]
-    - If plain text + auto_segment=True: automatically split into segments
+    Upload a sermon script:
+    - CSV: rows [segment_order, malay_text] → creates Segment rows
+    - Other text types → store raw_text, or auto-segment if auto_segment=True
     """
-    # Create sermon metadata row
     sermon = db_utils.create_sermon(db, title=title, speaker=speaker)
 
-    # Read file content safely
-    contents = await file.read()
-    try:
-        text_data = contents.decode("utf-8")
-    except Exception:
-        text_data = contents.decode("latin-1")
+    raw = await file.read()
+    text_data, is_csv, ext = _extract_text(file, raw)
 
     inserted = 0
+    auto_segmented = False
 
-    # --- CASE 1: CSV Upload ---
-    if file.filename.lower().endswith(".csv") and not auto_segment:
+    if is_csv:
         reader = csv.reader(io.StringIO(text_data))
         for row in reader:
-            if not row:
+            if not row or len(row) < 2:
                 continue
             try:
-                order = int(row[0])
-                malay_text = row[1]
-                db_utils.create_segment(db, sermon_id=sermon.sermon_id, order=order, malay_text=malay_text)
-                inserted += 1
+                order = int(str(row[0]).strip())
+                malay_text = str(row[1]).strip()
             except Exception:
                 continue
-
-    # --- CASE 2: Plain Text Upload (Auto-Segmentation) ---
-    else:
-        from ml_pipeline.alignment_module.segmenter import segment_text
-        segments = segment_text(text_data)
-        for idx, seg in enumerate(segments, start=1):
-            db_utils.create_segment(db, sermon_id=sermon.sermon_id, order=idx, malay_text=seg)
+            if not malay_text:
+                continue
+            db_utils.create_segment(db, sermon_id=sermon.sermon_id, order=order, malay_text=malay_text)
             inserted += 1
-
-        # Optional: update sermon status
-        sermon.status = "segmented"
+        sermon.status = "segments_uploaded"
         db.commit()
+    else:
+        if auto_segment:
+            from ml_pipeline.alignment_module.segmenter import segment_text
+            segments = segment_text(text_data)
+            for idx, seg in enumerate(segments, start=1):
+                db_utils.create_segment(db, sermon_id=sermon.sermon_id, order=idx, malay_text=seg)
+                inserted += 1
+            sermon.status = "segmented"
+            auto_segmented = True
+            db.commit()
+        else:
+            # store raw_text for later segmentation
+            if hasattr(sermon, "raw_text"):
+                sermon.raw_text = text_data
+            sermon.status = "uploaded_raw"
+            db.commit()
 
     return {
         "sermon_id": sermon.sermon_id,
         "inserted_segments": inserted,
-        "auto_segmented": auto_segment or not file.filename.lower().endswith(".csv")
+        "auto_segmented": auto_segmented,
+        "status": sermon.status,
+        "source_ext": ext,
     }
 
 

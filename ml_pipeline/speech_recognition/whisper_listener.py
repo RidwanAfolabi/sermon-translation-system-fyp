@@ -1,141 +1,137 @@
 """
 Realtime Malay speech recognition using Faster-Whisper.
+Yields Malay text chunks every N seconds.
 
-Exports:
-- listen_and_transcribe(): generator yielding recognized Malay text chunks.
-
-Env overrides:
-- WHISPER_MODEL      (default: "small")
-- WHISPER_LANG       (default: "ms")
-- WHISPER_DEVICE     (default: "auto" | "cuda" | "cpu")
-- WHISPER_COMPUTE    (default: auto: float16 on cuda, int8 on cpu)
-- WHISPER_BLOCK_SECS (default: 4) chunk size in seconds
-- WHISPER_MIN_CHARS  (default: 6) minimum chars to yield
-- WHISPER_VAD        (default: false) enable VAD (requires torch)
+Configure via env:
+WHISPER_MODEL (small|medium|large-v2|...)
+WHISPER_LANG (default: ms)
+WHISPER_DEVICE (auto|cuda|cpu)
+WHISPER_COMPUTE (override compute_type)
+WHISPER_BLOCK_SECS (default: 4)
+WHISPER_MIN_CHARS (default: 6)
+WHISPER_VAD (true/false)
 """
-import os
-import queue
-import logging
-from typing import Generator, Optional
 
+import os, queue, logging, threading, re
+from typing import Generator, Optional
 import numpy as np
 import sounddevice as sd
+import torch
 from faster_whisper import WhisperModel
-
-logger = logging.getLogger(__name__)
 
 SAMPLE_RATE = 16000
 CHANNELS = 1
-
-MODEL_NAME = os.getenv("WHISPER_MODEL", "small")
+MODEL_NAME = os.getenv("WHISPER_MODEL", "medium")  # upgrade for accuracy
 LANGUAGE = os.getenv("WHISPER_LANG", "ms")
-DEVICE = os.getenv("WHISPER_DEVICE", "auto")  # "auto" | "cuda" | "cpu"
-COMPUTE_TYPE_ENV = os.getenv("WHISPER_COMPUTE")  # optional override
-BLOCK_SECONDS = float(os.getenv("WHISPER_BLOCK_SECS", "4"))
+DEVICE = os.getenv("WHISPER_DEVICE", "auto")
+COMPUTE_TYPE_ENV = os.getenv("WHISPER_COMPUTE")
+BLOCK_SECONDS = float(os.getenv("WHISPER_BLOCK_SECS", "6"))  # larger chunk for context
 MIN_CHARS = int(os.getenv("WHISPER_MIN_CHARS", "6"))
-VAD_ENABLED = os.getenv("WHISPER_VAD", "false").lower() in {"1", "true", "yes"}
+VERBOSE_CHUNKS = os.getenv("WHISPER_VERBOSE", "true").lower() in {"1","true","yes"}
+VAD_ENABLED = os.getenv("WHISPER_VAD", "true").lower() in {"1","true","yes"}  # NEW
+INITIAL_PROMPT = os.getenv("WHISPER_PROMPT")  # optional domain bias prompt
 
-_audio_q: "queue.Queue[np.ndarray]" = queue.Queue(maxsize=8)
+_audio_q: "queue.Queue[np.ndarray]" = queue.Queue(maxsize=24)  # increased to reduce overflows
 _model: Optional[WhisperModel] = None
+_stop_flag = threading.Event()
+_last_text = ""
 
+def _resolve_device():
+    if DEVICE == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    return DEVICE
 
-def _compute_type(device: str) -> str:
+def _compute_type(real_device: str) -> str:
     if COMPUTE_TYPE_ENV:
         return COMPUTE_TYPE_ENV
-    return "float16" if device == "cuda" else "int8"
-
+    return "float16" if real_device == "cuda" else "int8"
 
 def _load_model() -> WhisperModel:
     global _model
-    if _model is not None:
-        return _model
-    compute_type = _compute_type(DEVICE if DEVICE != "auto" else "cuda")
+    if _model: return _model
+    real_device = _resolve_device()
+    comp = _compute_type(real_device)
     try:
-        _model = WhisperModel(
-            MODEL_NAME,
-            device=DEVICE,           # "auto" picks CUDA if available else CPU
-            compute_type=compute_type
-        )
-        logger.info(f"Faster-Whisper loaded: model={MODEL_NAME}, device={DEVICE}, compute={compute_type}")
-    except Exception as e:
-        logger.exception(f"Failed to load Faster-Whisper model '{MODEL_NAME}': {e}")
-        raise
+        _model = WhisperModel(MODEL_NAME, device=real_device, compute_type=comp)
+    except ValueError:
+        _model = WhisperModel(MODEL_NAME, device=real_device, compute_type="int8")
+    logging.info(f"[ASR] model={MODEL_NAME} device={real_device} compute={comp}")
     return _model
-
 
 def _sd_callback(indata, frames, time_info, status):
     if status:
-        # Non-fatal (e.g., underflow/overflow)
-        logger.warning(f"Audio status: {status}")
+        logging.warning(f"Audio status: {status}")
     try:
-        # Ensure float32 mono array
         block = np.asarray(indata, dtype=np.float32)
         if block.ndim == 2 and block.shape[1] > 1:
-            block = np.mean(block, axis=1, keepdims=True)  # downmix to mono
+            block = np.mean(block, axis=1, keepdims=True)
         _audio_q.put_nowait(block.copy())
     except queue.Full:
-        # Drop if producer is faster than consumer
         pass
 
+def stop_listener():
+    _stop_flag.set()
 
 def listen_and_transcribe() -> Generator[str, None, None]:
-    """
-    Open microphone and yield recognized Malay text every BLOCK_SECONDS.
-    """
+    global _last_text
+    _stop_flag.clear()  # NEW: ensure listener runs after prior stop
     model = _load_model()
-
-    # Configure sounddevice defaults
     sd.default.samplerate = SAMPLE_RATE
     sd.default.channels = CHANNELS
-
-    block_frames = int(SAMPLE_RATE * BLOCK_SECONDS)
+    target_samples = int(SAMPLE_RATE * BLOCK_SECONDS)
     buf = np.zeros((0, 1), dtype=np.float32)
-
-    # Start microphone stream
     with sd.InputStream(
         samplerate=SAMPLE_RATE,
         channels=CHANNELS,
         dtype="float32",
-        blocksize=int(SAMPLE_RATE * 0.5),  # ~0.5s callback blocks
+        blocksize=int(SAMPLE_RATE * 0.5),
         callback=_sd_callback,
     ):
-        logger.info(f"Listening mic at {SAMPLE_RATE}Hz, chunk={BLOCK_SECONDS}s, lang={LANGUAGE}")
-        while True:
-            # Wait for next audio block
-            data = _audio_q.get()
-            if data is None:
+        while not _stop_flag.is_set():
+            try:
+                data = _audio_q.get(timeout=0.5)
+            except queue.Empty:
                 continue
-            # Append to buffer
             if data.ndim == 1:
                 data = data[:, None]
             buf = np.concatenate((buf, data), axis=0)
+            if buf.shape[0] < target_samples:
+                continue
+            chunk = buf[:target_samples, 0]
+            buf = buf[target_samples:, :]
+            try:
+                segments, _info = model.transcribe(
+                    chunk,
+                    language=LANGUAGE,
+                    beam_size=2,            # lowered for speed (was 3)
+                    # patience removed (invalid at 0); omit or set to 1 if needed:
+                    # patience=1,
+                    vad_filter=VAD_ENABLED,
+                    vad_parameters={"min_silence_duration_ms": 300},
+                    temperature=0.0,  # deterministic (sampling not used with beam)
+                    compression_ratio_threshold=2.4,
+                    no_speech_threshold=0.5,
+                    condition_on_previous_text=True,
+                    initial_prompt=INITIAL_PROMPT,
+                )
+                text = " ".join(s.text.strip() for s in segments if s.text.strip())
+                text = re.sub(r"\s+", " ", text).strip()
+                if len(text) >= MIN_CHARS and text != _last_text:
+                    _last_text = text
+                    if VERBOSE_CHUNKS:
+                        logging.info(f"[ASR] {text}")
+                    yield text
+            except Exception as e:
+                logging.error(f"Transcription error: {e}")
+                continue
 
-            # Process when we have enough samples
-            if buf.shape[0] >= block_frames:
-                chunk = buf[:block_frames, 0].astype(np.float32)  # 1D float32
-                # keep any spillover for next chunk
-                buf = buf[block_frames:, :]
-
-                try:
-                    segments, _info = model.transcribe(
-                        chunk,
-                        language=LANGUAGE,
-                        beam_size=1,          # greedy for speed/stability
-                        vad_filter=VAD_ENABLED,
-                        vad_parameters=dict(min_silence_duration_ms=500) if VAD_ENABLED else None,
-                        no_speech_threshold=0.6,  # ignore near-silence
-                    )
-                    text_pieces = []
-                    for seg in segments:
-                        t = (seg.text or "").strip()
-                        if t:
-                            text_pieces.append(t)
-                    out_text = " ".join(text_pieces).strip()
-                    # Basic denoise and minimum length filter
-                    out_text = out_text.replace("  ", " ").strip()
-                    if len(out_text) >= MIN_CHARS:
-                        yield out_text
-                except Exception as e:
-                    logger.error(f"Whisper transcription error: {e}")
-                    # continue listening even if this chunk fails
-                    continue
+def start_listener(callback):
+    def _run():
+        for t in listen_and_transcribe():
+            try:
+                callback(t)
+            except Exception as e:
+                logging.error(f"Callback error: {e}")
+    th = threading.Thread(target=_run, daemon=True)
+    th.start()
+    return th

@@ -5,70 +5,74 @@ import re
 from typing import List
 
 KHUTBAH_MARKERS = [
-    r"^hadirin yang dirahmati Allah", r"^para jemaah sekalian",
-    r"^muslimin dan muslimat", r"^yang pertama", r"^yang kedua",
-    r"^seterusnya", r"^akhir kata", r"^kesimpulannya",
+    r"\bhadirin yang dirahmati allah\b",
+    r"\bpara jemaah sekalian\b",
+    r"\bmuslimin dan muslimat\b",
+    r"\byang pertama\b",
+    r"\byang kedua\b",
+    r"\bseterusnya\b",
+    r"\bakhir kata\b",
+    r"\bkesimpulannya\b",
 ]
-ARABIC_PATTERN = r"[اأإآءؤئ]+"
 
-def clean_text(text: str) -> str:
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
+def clean_text(t: str) -> str:
+    t = re.sub(r"\r", " ", t)
+    t = re.sub(r"\s+", " ", t)
+    return t.strip()
 
-def split_into_sentences(text: str) -> List[str]:
-    base = re.split(r"(?<=[.!?])\s+", text)
+def split_sentences(t: str) -> List[str]:
+    parts = re.split(r"(?<=[.!?])\s+", t)
     out = []
-    for s in base:
-        out.extend(re.split(r"(?<=,)\s+", s))
+    for p in parts:
+        out.extend(re.split(r"(?<=,)\s+", p))
     return [s.strip() for s in out if s.strip()]
 
-def force_markers(sentences: List[str]) -> List[str]:
-    out, cur = [], ""
+def group_markers(sentences: List[str]) -> List[str]:
+    acc = []
+    cur = []
     for s in sentences:
-        low = s.lower().strip()
-        if any(re.match(m, low) for m in KHUTBAH_MARKERS):
-            if cur.strip():
-                out.append(cur.strip())
-            cur = s
+        low = s.lower()
+        if any(re.search(m, low) for m in KHUTBAH_MARKERS):
+            if cur:
+                acc.append(" ".join(cur).strip())
+                cur = []
+            acc.append(s.strip())
         else:
-            cur = s if not cur else f"{cur} {s}"
-    if cur.strip():
-        out.append(cur.strip())
-    return out
+            cur.append(s)
+    if cur:
+        acc.append(" ".join(cur).strip())
+    return acc
 
-def isolate_arabic(segments: List[str]) -> List[str]:
+def split_long(seg: str, max_len: int) -> List[str]:
+    if len(seg) <= max_len:
+        return [seg]
+    cut = re.split(r"(?<=[.!?])\s+", seg)
+    res = []
+    for c in cut:
+        if c.strip():
+            res.append(c.strip())
+    return res
+
+def merge_short(segs: List[str], min_len: int = 40) -> List[str]:
+    if not segs: return segs
     out = []
-    for seg in segments:
-        if re.search(ARABIC_PATTERN, seg):
-            parts = re.split(r"(?=" + ARABIC_PATTERN + r")", seg)
-            out.extend([p.strip() for p in parts if p.strip()])
+    buf = segs[0]
+    for s in segs[1:]:
+        if len(buf) < min_len:
+            buf = f"{buf} {s}"
         else:
-            out.append(seg)
+            out.append(buf.strip())
+            buf = s
+    out.append(buf.strip())
     return out
 
-def merge_short(segments: List[str], min_len=40) -> List[str]:
-    if not segments: return segments
-    merged, cur = [], segments[0]
-    for seg in segments[1:]:
-        if len(cur) < min_len:
-            cur = f"{cur} {seg}"
-        else:
-            merged.append(cur.strip())
-            cur = seg
-    merged.append(cur.strip())
-    return merged
-
-def segment_text(text: str, max_len: int = 220) -> List[str]:
-    text = clean_text(text)
-    sentences = split_into_sentences(text)
-    segments = force_markers(sentences)
-    segments = isolate_arabic(segments)
+def segment_text(raw: str, max_len: int = 220) -> List[str]:
+    raw = clean_text(raw)
+    sents = split_sentences(raw)
+    grouped = group_markers(sents)
     final = []
-    for seg in segments:
-        if len(seg) <= max_len:
-            final.append(seg)
-        else:
-            for p in re.split(r"(?<=[.!?])\s+", seg):
-                if p.strip():
-                    final.append(p.strip())
-    return merge_short(final, min_len=40)
+    for g in grouped:
+        pieces = split_long(g, max_len)
+        final.extend(pieces)
+    final = merge_short(final, min_len=40)
+    return final
