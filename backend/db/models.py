@@ -11,27 +11,24 @@ class Sermon(Base):
     title = Column(String(255), nullable=False)
     speaker = Column(String(150))
     date_uploaded = Column(DateTime(timezone=True), server_default=func.now())
-    status = Column(String(32), default="draft")  # draft, translated, vetted, ready
+    status = Column(String(32), default="draft")  # draft, uploaded_raw, segmented, translated, vetted
+    raw_text = Column(Text, nullable=True)
 
 class Segment(Base):
     __tablename__ = "segments"
     segment_id = Column(Integer, primary_key=True, index=True)
     sermon_id = Column(Integer, ForeignKey("sermons.sermon_id", ondelete="CASCADE"), nullable=False, index=True)
-    segment_order = Column(Integer, nullable=False, index=True)
+    segment_order = Column(Integer, nullable=False)
     malay_text = Column(Text, nullable=False)
-    english_text = Column(Text)
-    confidence_score = Column(Float)
+    english_text = Column(Text, nullable=True)
+    confidence_score = Column(Float, nullable=True)
     is_vetted = Column(Boolean, default=False)
-    last_reviewed_by = Column(String(150))
-    last_reviewed_date = Column(DateTime(timezone=True))
-    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class Log(Base):
     __tablename__ = "logs"
-    log_id = Column(Integer, primary_key=True, index=True)
-    sermon_id = Column(Integer, ForeignKey("sermons.sermon_id", ondelete="CASCADE"), nullable=False, index=True)
-    segment_id = Column(Integer, ForeignKey("segments.segment_id", ondelete="SET NULL"))
-    session_id = Column(String(100))
-    event_time = Column(DateTime(timezone=True), server_default=func.now())
-    alignment_confidence = Column(Float)
-    display_time_seconds = Column(Float)
-    flag = Column(String(32))
+    id = Column(Integer, primary_key=True, index=True)
+    sermon_id = Column(Integer, ForeignKey("sermons.sermon_id", ondelete="CASCADE"), nullable=True, index=True)
+    level = Column(String(16), default="INFO")
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
