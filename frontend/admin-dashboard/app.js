@@ -1,144 +1,175 @@
-const API = "http://127.0.0.1:8000";
-const statusEl = document.getElementById("status");
-const uploadForm = document.getElementById("uploadForm");
-const sermonSelect = document.getElementById("sermonSelect");
-const refreshBtn = document.getElementById("refreshSermons");
-const loadBtn = document.getElementById("loadSermon");
-const segmentNowBtn = document.getElementById("segmentNow");
-const translateBtn = document.getElementById("translateStart");
-const modelProvider = document.getElementById("modelProvider");
-const modelName = document.getElementById("modelName");
-const tbody = document.getElementById("segmentsBody");
+const BASE = "http://127.0.0.1:8000";
 
-function setStatus(msg) { statusEl.textContent = msg; }
+const els = {
+  status: document.getElementById("status"),
+  uploadForm: document.getElementById("uploadForm"),
+  title: document.getElementById("title"),
+  speaker: document.getElementById("speaker"),
+  file: document.getElementById("file"),
+  autoSeg: document.getElementById("auto_segment"),
+  sermonSelect: document.getElementById("sermonSelect"),
+  refreshSermons: document.getElementById("refreshSermons"),
+  loadSermon: document.getElementById("loadSermon"),
+  segmentNow: document.getElementById("segmentNow"),
+  segStrategy: document.getElementById("segStrategy"),
+  modelProvider: document.getElementById("modelProvider"),
+  modelName: document.getElementById("modelName"),
+  translateStart: document.getElementById("translateStart"),
+  segmentsBody: document.getElementById("segmentsBody"),
+};
 
-async function listSermons() {
+function setStatus(msg) {
+  els.status.textContent = msg;
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(`${BASE}${path}`, opts);
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${res.statusText} ${t}`);
+  }
+  const ct = res.headers.get("content-type") || "";
+  return ct.includes("application/json") ? res.json() : res.text();
+}
+
+async function loadSermons() {
   setStatus("Loading sermons...");
-  const res = await fetch(`${API}/sermon/list`);
-  const data = await res.json();
-  sermonSelect.innerHTML = "";
-  (data.sermons || []).forEach(s => {
+  const data = await api("/sermon/list");
+  els.sermonSelect.innerHTML = "";
+  data.forEach((s) => {
     const opt = document.createElement("option");
     opt.value = s.sermon_id;
-    opt.textContent = `#${s.sermon_id} · ${s.title} · ${s.status}`;
-    sermonSelect.appendChild(opt);
+    opt.textContent = `#${s.sermon_id} — ${s.title} ${s.speaker ? `(${s.speaker})` : ""}`;
+    els.sermonSelect.appendChild(opt);
   });
-  setStatus("Ready");
+  setStatus(`Loaded ${data.length} sermons.`);
 }
 
-async function loadSermon() {
-  const id = sermonSelect.value;
-  if (!id) return;
-  setStatus(`Loading sermon ${id}...`);
-  const res = await fetch(`${API}/sermon/${id}`);
-  const data = await res.json();
-  renderSegments(data.segments || []);
-  setStatus(`Loaded sermon ${id}`);
-}
-
-function renderSegments(rows) {
-  tbody.innerHTML = "";
-  rows.forEach((r) => {
+function renderSegments(segments) {
+  els.segmentsBody.innerHTML = "";
+  segments.forEach((seg) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><span class="badge">${r.order}</span></td>
-      <td>${escapeHtml(r.malay_text || "")}</td>
-      <td><textarea class="eng-edit" data-id="${r.segment_id}">${r.english_text || ""}</textarea></td>
-      <td>${r.confidence_score != null ? r.confidence_score.toFixed(2) : "-"}</td>
-      <td><input type="checkbox" class="vet-check" data-id="${r.segment_id}" ${r.is_vetted ? "checked": ""} /></td>
-      <td><button class="save-btn" data-id="${r.segment_id}">Save</button></td>
-    `;
-    tbody.appendChild(tr);
-  });
-  tbody.querySelectorAll(".save-btn").forEach(btn => {
-    btn.addEventListener("click", async (e) => {
-      const id = e.target.dataset.id;
-      const eng = tbody.querySelector(`.eng-edit[data-id="${id}"]`).value.trim();
-      const vetted = tbody.querySelector(`.vet-check[data-id="${id}"]`).checked;
-      await saveVet(id, eng, vetted);
-    });
+
+    const tdNo = document.createElement("td");
+    tdNo.textContent = seg.segment_order;
+    tr.appendChild(tdNo);
+
+    const tdMalay = document.createElement("td");
+    tdMalay.textContent = seg.malay_text || "";
+    tr.appendChild(tdMalay);
+
+    const tdEng = document.createElement("td");
+    const input = document.createElement("textarea");
+    input.value = seg.english_text || "";
+    input.rows = 2;
+    input.style.width = "100%";
+    tdEng.appendChild(input);
+    tr.appendChild(tdEng);
+
+    const tdConf = document.createElement("td");
+    tdConf.textContent = seg.confidence != null ? seg.confidence.toFixed(3) : "";
+    tr.appendChild(tdConf);
+
+    const tdVetted = document.createElement("td");
+    const chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.checked = !!seg.vetted;
+    tdVetted.appendChild(chk);
+    tr.appendChild(tdVetted);
+
+    const tdSave = document.createElement("td");
+    const btn = document.createElement("button");
+    btn.textContent = "Save";
+    btn.onclick = async () => {
+      try {
+        setStatus(`Saving segment #${seg.segment_order}...`);
+        await api(`/sermon/segment/${seg.segment_id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            english_text: input.value,
+            vetted: chk.checked,
+          }),
+        });
+        setStatus(`Saved segment #${seg.segment_order}.`);
+      } catch (e) {
+        console.error(e);
+        setStatus(`Save failed: ${e.message}`);
+      }
+    };
+    tdSave.appendChild(btn);
+    tr.appendChild(tdSave);
+
+    els.segmentsBody.appendChild(tr);
   });
 }
 
-async function saveVet(segment_id, english_text, is_vetted) {
-  setStatus(`Saving segment ${segment_id}...`);
-  // Save text + vetted
-  const fd = new FormData();
-  fd.append("segment_id", segment_id);
-  fd.append("english_text", english_text);
-  fd.append("reviewer", "admin"); // replace with real auth later
-  const res = await fetch(`${API}/translation/vet_segment`, { method: "POST", body: fd });
-  if (!res.ok) {
-    setStatus("Error saving segment");
-    return;
-  }
-  // If unchecked vetted, just saved text; DB route sets is_vetted True—keep simple for demo
-  setStatus("Saved");
+async function loadSegments() {
+  const id = els.sermonSelect.value;
+  if (!id) return;
+  setStatus(`Loading segments for sermon ${id}...`);
+  const data = await api(`/sermon/${id}/segments`);
+  renderSegments(data);
+  setStatus(`Loaded ${data.length} segments.`);
 }
 
-uploadForm.addEventListener("submit", async (e) => {
+els.uploadForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const title = document.getElementById("title").value.trim();
-  const speaker = document.getElementById("speaker").value.trim();
-  const file = document.getElementById("file").files[0];
-  const autoSeg = document.getElementById("auto_segment").checked;
-
-  const fd = new FormData();
-  fd.append("title", title);
-  fd.append("speaker", speaker);
-  fd.append("file", file);
-  fd.append("auto_segment", autoSeg ? "true" : "false");
-
-  setStatus("Uploading...");
-  const res = await fetch(`${API}/sermon/upload`, { method: "POST", body: fd });
-  const data = await res.json();
-  if (!res.ok) {
-    setStatus(`Upload failed: ${data.detail || res.status}`);
-    return;
+  try {
+    const fd = new FormData();
+    fd.append("title", els.title.value);
+    fd.append("speaker", els.speaker.value);
+    fd.append("file", els.file.files[0]);
+    fd.append("auto_segment", els.autoSeg.checked ? "true" : "false");
+    setStatus("Uploading...");
+    const res = await api("/sermon/upload", { method: "POST", body: fd });
+    setStatus(`Uploaded. Sermon #${res.sermon_id}, status: ${res.status}`);
+    await loadSermons();
+  } catch (e) {
+    console.error(e);
+    setStatus(`Upload failed: ${e.message}`);
   }
-  setStatus(`Uploaded sermon ${data.sermon_id}. Inserted segments: ${data.inserted_segments}`);
-  await listSermons();
 });
 
-refreshBtn.addEventListener("click", listSermons);
-loadBtn.addEventListener("click", loadSermon);
+els.refreshSermons.addEventListener("click", loadSermons);
+els.loadSermon.addEventListener("click", loadSegments);
 
-segmentNowBtn.addEventListener("click", async () => {
-  const id = sermonSelect.value;
+els.segmentNow.addEventListener("click", async () => {
+  const id = els.sermonSelect.value;
   if (!id) return;
-  setStatus(`Segmenting sermon ${id}...`);
-  const fd = new FormData();
-  fd.append("sermon_id", id);
-  const res = await fetch(`${API}/sermon/segment`, { method: "POST", body: fd });
-  const data = await res.json();
-  if (!res.ok) {
-    setStatus(`Segment failed: ${data.detail || res.status}`);
-    return;
+  const strategy = els.segStrategy.value; // auto|sentence|paragraph
+  try {
+    setStatus(`Segmenting sermon ${id} with strategy=${strategy}...`);
+    await api(`/sermon/${id}/segment-now?strategy=${encodeURIComponent(strategy)}`, {
+      method: "POST",
+    });
+    await loadSegments();
+    setStatus("Segmentation done.");
+  } catch (e) {
+    console.error(e);
+    setStatus(`Segmentation failed: ${e.message}`);
   }
-  setStatus(`Segmented: ${data.inserted_segments} segments.`);
-  await loadSermon();
 });
 
-translateBtn.addEventListener("click", async () => {
-  const id = sermonSelect.value;
+els.translateStart.addEventListener("click", async () => {
+  const id = els.sermonSelect.value;
   if (!id) return;
-  setStatus(`Translating sermon ${id}...`);
-  const fd = new FormData();
-  fd.append("sermon_id", id);
-  if (modelProvider.value) fd.append("model_provider", modelProvider.value);
-  if (modelName.value) fd.append("model_name", modelName.value);
-  const res = await fetch(`${API}/translation/translate_start`, { method: "POST", body: fd });
-  const data = await res.json();
-  if (!res.ok) {
-    setStatus(`Translate failed: ${data.detail || res.status}`);
-    return;
+  const provider = els.modelProvider.value;
+  const modelName = els.modelName.value.trim();
+  try {
+    setStatus(`Translating sermon ${id} via ${provider}...`);
+    await api(`/sermon/${id}/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider, model_name: modelName || null }),
+    });
+    await loadSegments();
+    setStatus("Translation completed.");
+  } catch (e) {
+    console.error(e);
+    setStatus(`Translation failed: ${e.message}`);
   }
-  setStatus(`Translated ${data.translated_count} segments.`);
-  await loadSermon();
 });
 
-function escapeHtml(s) {
-  return (s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-listSermons();
+// init
+loadSermons().catch((e) => setStatus(`Init failed: ${e.message}`));

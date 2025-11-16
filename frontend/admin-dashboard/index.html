@@ -43,7 +43,6 @@
         <label>Choose sermon</label>
         <select id="sermonSelect"></select>
       </div>
-
       <div class="row">
         <button id="refreshSermons">Refresh list</button>
         <button id="loadSermon">Load segments</button>
@@ -53,6 +52,14 @@
 
       <h3>Segmentation</h3>
       <div class="row">
+        <label>Strategy</label>
+        <select id="segStrategy">
+          <option value="auto" selected>Automatic (balanced)</option>
+          <option value="sentence">Sentence-based</option>
+          <option value="paragraph">Paragraph</option>
+        </select>
+      </div>
+      <div class="row">
         <button id="segmentNow">Segment now (from raw_text)</button>
       </div>
 
@@ -60,7 +67,7 @@
       <div class="row">
         <label>Provider</label>
         <select id="modelProvider">
-          <option value="marian">HuggingFace MarianMT (default)</option>
+          <option value="marian" selected>HuggingFace MarianMT (default)</option>
           <option value="nllb">HuggingFace NLLB-200</option>
           <option value="openai">OpenAI (requires key)</option>
         </select>

@@ -5,8 +5,8 @@ Main FastAPI application entrypoint.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.api.routes import sermon_routes, translation_routes
-from backend.api.routes import live_routes  # 👈 this was added
+from backend.api.routes import sermon_routes, live_routes
+from backend.api.routes import translation_routes  # 👈 this was added
 
 app = FastAPI(
     title="AI Masjid Sermon Translation API",
@@ -32,10 +32,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register Routers
-app.include_router(sermon_routes.router, prefix="/sermon", tags=["Sermon"])
-app.include_router(translation_routes.router, prefix="/translation", tags=["Translation"])
-app.include_router(live_routes.router, prefix="/live", tags=["Live Streaming"])  # 👈 this line was added
+# Register Routers (remove duplicate prefixes)
+app.include_router(sermon_routes.router, tags=["Sermon"])
+app.include_router(translation_routes.router, tags=["Translation"])
+app.include_router(live_routes.router, tags=["Live Streaming"])  # 👈 this line was added
 
 @app.get("/")
 def root():
