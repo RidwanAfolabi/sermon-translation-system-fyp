@@ -171,14 +171,42 @@ def patch_segment(segment_id: int, payload: dict = Body(...), db: Session = Depe
     seg = db.query(models.Segment).filter(models.Segment.segment_id == segment_id).first()
     if not seg:
         raise HTTPException(404, "Segment not found")
+
+    malay_text = payload.get("malay_text")
     english_text = payload.get("english_text")
     vetted = payload.get("vetted")
+    retranslate = payload.get("retranslate", False)
+
+    changed_malay = False
+    if malay_text is not None and malay_text.strip() != (seg.malay_text or "").strip():
+        seg.malay_text = malay_text.strip()
+        changed_malay = True
+
     if english_text is not None:
         seg.english_text = english_text
+
     if vetted is not None:
         seg.vetted = bool(vetted)
+
+    # On demand retranslation (if malay changed or explicit flag)
+    if retranslate or (changed_malay and english_text is None):
+        from ml_pipeline.translation_model.inference import translate_text_batch
+        result = translate_text_batch([seg.malay_text])[0]
+        seg.english_text = result["text"]
+        if "confidence" in result:
+            seg.confidence = float(result["confidence"])
+
     db.commit()
-    return {"ok": True}
+    db.refresh(seg)
+    return {
+        "ok": True,
+        "segment_id": seg.segment_id,
+        "malay_text": seg.malay_text,
+        "english_text": seg.english_text,
+        "confidence": getattr(seg, "confidence", None),
+        "vetted": getattr(seg, "vetted", False),
+        "retranslated": retranslate or changed_malay
+    }
 
 # Segment-now (strategy: auto|sentence|paragraph)
 @router.post("/{sermon_id}/segment-now")
@@ -223,20 +251,23 @@ def translate_all(
 ):
     provider = (payload or {}).get("provider", "marian")
     model_name = (payload or {}).get("model_name")
+    only_empty = (payload or {}).get("only_empty", False)
 
-    segs = db.query(models.Segment)\
-        .filter(models.Segment.sermon_id == sermon_id)\
-        .order_by(models.Segment.segment_order.asc()).all()
-    malay = [s.malay_text or "" for s in segs]
-    if not malay:
-        return {"ok": True, "count": 0}
+    targets = []
+    target_segments = []
+    for s in segs:
+        if only_empty and getattr(s, "english_text", None):
+            continue
+        targets.append(s.malay_text or "")
+        target_segments.append(s)
 
-    # Currently wired to Marian pipeline; model_name optional override.
-    # If you support multiple providers, route to the right inference here.
-    from ml_pipeline.translation_model.inference import translate_text_batch  # uses configured model
-    results = translate_text_batch(malay)  # [{"text","confidence"}]
+    if not targets:
+        return {"ok": True, "count": 0, "provider": provider, "skipped": True}
 
-    for s, r in zip(segs, results):
+    from ml_pipeline.translation_model.inference import translate_text_batch
+    results = translate_text_batch(targets)
+
+    for s, r in zip(target_segments, results):
         s.english_text = r["text"]
         if "confidence" in r:
             s.confidence = float(r["confidence"])

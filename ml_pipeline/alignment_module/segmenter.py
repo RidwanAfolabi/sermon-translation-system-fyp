@@ -1,4 +1,3 @@
-# segmenter for sermon text files
 # ml_pipeline/alignment_module/segmenter.py
 
 import re
@@ -15,64 +14,112 @@ KHUTBAH_MARKERS = [
     r"\bkesimpulannya\b",
 ]
 
+
+# ---------- BASIC CLEAN ----------
 def clean_text(t: str) -> str:
     t = re.sub(r"\r", " ", t)
     t = re.sub(r"\s+", " ", t)
     return t.strip()
 
-def split_sentences(t: str) -> List[str]:
-    parts = re.split(r"(?<=[.!?])\s+", t)
-    out = []
-    for p in parts:
-        out.extend(re.split(r"(?<=,)\s+", p))
-    return [s.strip() for s in out if s.strip()]
 
-def group_markers(sentences: List[str]) -> List[str]:
-    acc = []
-    cur = []
+# ---------- STRONG SENTENCE SPLITTING ----------
+def hard_sentence_split(t: str) -> List[str]:
+    """
+    Split by . ? ! while keeping sentences intact.
+    """
+    parts = re.split(r"(?<=[.!?])\s+", t)
+    return [p.strip() for p in parts if p.strip()]
+
+
+# ---------- SPLIT VERY LONG SENTENCES ----------
+def split_by_word_count(sentence: str, max_words: int = 22) -> List[str]:
+    """
+    If sentence > max_words, break into smaller blocks.
+    Also break if more than 2 commas appear.
+    """
+    words = sentence.split()
+    
+    # Break at commas first if too many
+    if sentence.count(",") >= 2:
+        comma_parts = re.split(r"(?<=,)\s+", sentence)
+        out = []
+        for cp in comma_parts:
+            if len(cp.split()) > max_words:
+                out.extend(split_by_word_count(cp, max_words))
+            else:
+                out.append(cp.strip())
+        return out
+
+    # Basic word splitting
+    if len(words) <= max_words:
+        return [sentence]
+
+    out = []
+    for i in range(0, len(words), max_words):
+        chunk = " ".join(words[i:i+max_words]).strip()
+        if chunk:
+            out.append(chunk)
+
+    return out
+
+
+# ---------- ENFORCE KHUTBAH MARKERS ----------
+def enforce_markers(sentences: List[str]) -> List[str]:
+    out = []
+    buf = []
     for s in sentences:
         low = s.lower()
         if any(re.search(m, low) for m in KHUTBAH_MARKERS):
-            if cur:
-                acc.append(" ".join(cur).strip())
-                cur = []
-            acc.append(s.strip())
+            if buf:
+                out.append(" ".join(buf).strip())
+                buf = []
+            out.append(s.strip())
         else:
-            cur.append(s)
-    if cur:
-        acc.append(" ".join(cur).strip())
-    return acc
-
-def split_long(seg: str, max_len: int) -> List[str]:
-    if len(seg) <= max_len:
-        return [seg]
-    cut = re.split(r"(?<=[.!?])\s+", seg)
-    res = []
-    for c in cut:
-        if c.strip():
-            res.append(c.strip())
-    return res
-
-def merge_short(segs: List[str], min_len: int = 40) -> List[str]:
-    if not segs: return segs
-    out = []
-    buf = segs[0]
-    for s in segs[1:]:
-        if len(buf) < min_len:
-            buf = f"{buf} {s}"
-        else:
-            out.append(buf.strip())
-            buf = s
-    out.append(buf.strip())
+            buf.append(s)
+    if buf:
+        out.append(" ".join(buf).strip())
     return out
 
+
+# ---------- MERGE TINY SEGMENTS ----------
+def merge_small(segs: List[str], min_chars: int = 40) -> List[str]:
+    out = []
+    buf = ""
+    for s in segs:
+        if len(buf) < min_chars:
+            buf = (buf + " " + s).strip()
+        else:
+            out.append(buf)
+            buf = s
+    if buf:
+        out.append(buf)
+    return out
+
+
+# ---------- MAIN FUNCTION ----------
 def segment_text(raw: str, max_len: int = 220) -> List[str]:
     raw = clean_text(raw)
-    sents = split_sentences(raw)
-    grouped = group_markers(sents)
-    final = []
-    for g in grouped:
-        pieces = split_long(g, max_len)
-        final.extend(pieces)
-    final = merge_short(final, min_len=40)
-    return final
+
+    # 1. Hard split into sentences
+    init_sents = hard_sentence_split(raw)
+
+    # 2. Enforce khutbah markers
+    marked = enforce_markers(init_sents)
+
+    # 3. Split long sentences by word count or commas
+    pieces = []
+    for s in marked:
+        pieces.extend(split_by_word_count(s, max_words=22))
+
+    # 4. Merge tiny segments
+    final = merge_small(pieces, min_chars=40)
+
+    # 5. Respect max_len
+    really_final = []
+    for f in final:
+        if len(f) > max_len:
+            really_final.extend(split_by_word_count(f, max_words=18))
+        else:
+            really_final.append(f)
+
+    return really_final

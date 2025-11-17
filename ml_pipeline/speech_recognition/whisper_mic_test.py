@@ -1,4 +1,5 @@
 """
+For testing only
 Real-time Malay speech recognition using OpenAI Whisper (Windows-safe version).
 """
 
