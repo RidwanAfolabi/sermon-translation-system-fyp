@@ -318,11 +318,9 @@ def export_sermon(sermon_id: int, format: str = "csv", db: Session = Depends(get
         for s in segs:
             buf.write(f"{s.segment_order},{csv_escape(s.malay_text)},{csv_escape(s.english_text)},{getattr(s,'confidence','')},{int(getattr(s,'vetted', False))}\n")
         data = buf.getvalue().encode("utf-8")
-        return Response(
-            data,
-            media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename=sermon_{sermon_id}.csv"}
-        )
+        return Response(data, media_type="text/csv",
+                        headers={"Content-Disposition": f"attachment; filename=sermon_{sermon_id}.csv"})
+
     if format == "txt":
         lines = [f"# {sermon.title or ''}",
                  f"Speaker: {sermon.speaker or ''}",
@@ -330,31 +328,86 @@ def export_sermon(sermon_id: int, format: str = "csv", db: Session = Depends(get
         for s in segs:
             lines.append(f"{s.segment_order}. {s.malay_text}")
             if s.english_text:
-                lines.append(f"   EN: {s.english_text}")
+                lines.append(f"EN: {s.english_text}")
         data = "\n".join(lines).encode("utf-8")
         return Response(data, media_type="text/plain",
                         headers={"Content-Disposition": f"attachment; filename=sermon_{sermon_id}.txt"})
+
     if format == "pdf":
         if FPDF is None:
             raise HTTPException(500, "fpdf2 not installed (pip install fpdf2)")
         pdf = FPDF()
         pdf.set_auto_page_break(auto=True, margin=12)
         pdf.add_page()
-        pdf.set_font("Arial", "B", 14)
+
+        font_loaded = False
+        try:
+            pdf.add_font("DejaVu", "", "backend/assets/fonts/DejaVuSans.ttf", uni=True)
+            pdf.add_font("DejaVu", "B", "backend/assets/fonts/DejaVuSans-Bold.ttf", uni=True)  # bold variant
+            pdf.set_font("DejaVu", "B", 14)
+            font_loaded = True
+        except Exception:
+            pdf.set_font("Arial", "B", 14)
+
         pdf.cell(0, 10, sermon.title or "", ln=1)
-        pdf.set_font("Arial", "", 11)
+        pdf.set_font("DejaVu" if font_loaded else "Arial", "", 11)
         if sermon.speaker:
             pdf.cell(0, 8, f"Speaker: {sermon.speaker}", ln=1)
         pdf.ln(4)
+
+        line_width = pdf.w - pdf.l_margin - pdf.r_margin
+
+        def split_long_tokens(text: str, max_token: int = 30):
+            out = []
+            for w in text.split():
+                if len(w) > max_token:
+                    # hard split very long unbreakable token
+                    for i in range(0, len(w), max_token):
+                        out.append(w[i:i+max_token])
+                else:
+                    out.append(w)
+            return " ".join(out)
+
+        def wrap_line(text: str, max_len: int = 90):
+            text = split_long_tokens(text)
+            parts, buf = [], ""
+            for tok in text.split():
+                if len(buf) + 1 + len(tok) <= max_len:
+                    buf = f"{buf} {tok}".strip()
+                else:
+                    if buf:
+                        parts.append(buf)
+                    buf = tok
+            if buf:
+                parts.append(buf)
+            return parts or [""]
+
         for s in segs:
-            pdf.set_font("Arial", "B", 10)
-            pdf.multi_cell(0, 5, f"{s.segment_order}. {s.malay_text}")
+            pdf.set_font("DejaVu" if font_loaded else "Arial", "B", 10)
+            for ln in wrap_line(f"{s.segment_order}. {s.malay_text}", 90):
+                pdf.multi_cell(line_width, 5, ln)
             if s.english_text:
-                pdf.set_font("Arial", "", 10)
-                pdf.multi_cell(0, 5, f"EN: {s.english_text}")
+                pdf.set_font("DejaVu" if font_loaded else "Arial", "", 10)
+                for ln in wrap_line(f"EN: {s.english_text}", 90):
+                    pdf.multi_cell(line_width, 5, ln)
             pdf.ln(2)
-        out = pdf.output(dest="S").encode("latin-1", errors="ignore")
-        return Response(out, media_type="application/pdf",
-                        headers={"Content-Disposition": f"attachment; filename=sermon_{sermon_id}.pdf"})
+
+        raw = pdf.output(dest="S")
+        # fpdf2 returns str with binary chars; encode latin-1 exactly (no ignore)
+        if isinstance(raw, str):
+            data = raw.encode("latin-1")
+        else:
+            data = bytes(raw)
+
+        # Sanity check header
+        if not data.startswith(b"%PDF"):
+            raise HTTPException(500, "PDF generation failed (invalid header)")
+
+        return Response(
+            data,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=sermon_{sermon_id}.pdf"}
+        )
+
     raise HTTPException(400, "Unsupported format")
 
