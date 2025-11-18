@@ -47,6 +47,15 @@
         <button id="refreshSermons">Refresh list</button>
         <button id="loadSermon">Load segments</button>
       </div>
+      <div class="row">
+        <button id="deleteSermon" class="danger">Delete sermon</button>
+      </div>
+      <div class="row">
+        <label>Export:</label>
+        <button class="secondary" id="exportCsv">CSV</button>
+        <button class="secondary" id="exportTxt">TXT</button>
+        <button class="secondary" id="exportPdf">PDF</button>
+      </div>
 
       <hr />
 
@@ -79,6 +88,9 @@
       <div class="row">
         <button id="translateStart">Translate all segments</button>
       </div>
+      <div class="row">
+        <button id="translateMissing">Translate only empty English</button>
+      </div>
     </section>
 
     <!-- Segments table -->
@@ -89,11 +101,12 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Malay</th>
+            <th>Malay (editable)</th>
             <th>English (editable)</th>
             <th>Conf</th>
             <th>Vetted</th>
             <th>Save</th>
+            <th>Retranslate</th>
           </tr>
         </thead>
         <tbody id="segmentsBody"></tbody>

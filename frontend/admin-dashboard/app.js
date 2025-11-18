@@ -16,6 +16,10 @@ const els = {
   modelName: document.getElementById("modelName"),
   translateStart: document.getElementById("translateStart"),
   segmentsBody: document.getElementById("segmentsBody"),
+  deleteSermon: document.getElementById("deleteSermon"),
+  exportCsv: document.getElementById("exportCsv"),
+  exportTxt: document.getElementById("exportTxt"),
+  exportPdf: document.getElementById("exportPdf"),
 };
 
 function setStatus(msg) {
@@ -50,26 +54,35 @@ function renderSegments(segments) {
   segments.forEach((seg) => {
     const tr = document.createElement("tr");
 
+    // Order
     const tdNo = document.createElement("td");
     tdNo.textContent = seg.segment_order;
     tr.appendChild(tdNo);
 
+    // Malay editable
     const tdMalay = document.createElement("td");
-    tdMalay.textContent = seg.malay_text || "";
+    const malayArea = document.createElement("textarea");
+    malayArea.value = seg.malay_text || "";
+    malayArea.rows = 2;
+    malayArea.style.width = "100%";
+    tdMalay.appendChild(malayArea);
     tr.appendChild(tdMalay);
 
+    // English editable
     const tdEng = document.createElement("td");
-    const input = document.createElement("textarea");
-    input.value = seg.english_text || "";
-    input.rows = 2;
-    input.style.width = "100%";
-    tdEng.appendChild(input);
+    const engArea = document.createElement("textarea");
+    engArea.value = seg.english_text || "";
+    engArea.rows = 2;
+    engArea.style.width = "100%";
+    tdEng.appendChild(engArea);
     tr.appendChild(tdEng);
 
+    // Confidence
     const tdConf = document.createElement("td");
     tdConf.textContent = seg.confidence != null ? seg.confidence.toFixed(3) : "";
     tr.appendChild(tdConf);
 
+    // Vetted
     const tdVetted = document.createElement("td");
     const chk = document.createElement("input");
     chk.type = "checkbox";
@@ -77,17 +90,19 @@ function renderSegments(segments) {
     tdVetted.appendChild(chk);
     tr.appendChild(tdVetted);
 
+    // Save
     const tdSave = document.createElement("td");
-    const btn = document.createElement("button");
-    btn.textContent = "Save";
-    btn.onclick = async () => {
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save";
+    saveBtn.onclick = async () => {
       try {
         setStatus(`Saving segment #${seg.segment_order}...`);
         await api(`/sermon/segment/${seg.segment_id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            english_text: input.value,
+            malay_text: malayArea.value,
+            english_text: engArea.value,
             vetted: chk.checked,
           }),
         });
@@ -97,8 +112,35 @@ function renderSegments(segments) {
         setStatus(`Save failed: ${e.message}`);
       }
     };
-    tdSave.appendChild(btn);
+    tdSave.appendChild(saveBtn);
     tr.appendChild(tdSave);
+
+    // Retranslate
+    const tdRetr = document.createElement("td");
+    const rtBtn = document.createElement("button");
+    rtBtn.textContent = "↻";
+    rtBtn.title = "Retranslate from Malay";
+    rtBtn.onclick = async () => {
+      try {
+        setStatus(`Retranslating #${seg.segment_order}...`);
+        const resp = await api(`/sermon/segment/${seg.segment_id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            malay_text: malayArea.value,
+            retranslate: true,
+          }),
+        });
+        engArea.value = resp.english_text || "";
+        tdConf.textContent = resp.confidence != null ? resp.confidence.toFixed(3) : "";
+        setStatus(`Retranslated segment #${seg.segment_order}.`);
+      } catch (e) {
+        console.error(e);
+        setStatus(`Retranslate failed: ${e.message}`);
+      }
+    };
+    tdRetr.appendChild(rtBtn);
+    tr.appendChild(tdRetr);
 
     els.segmentsBody.appendChild(tr);
   });
@@ -170,6 +212,73 @@ els.translateStart.addEventListener("click", async () => {
     setStatus(`Translation failed: ${e.message}`);
   }
 });
+
+// Translate missing button (already OK)
+const translateMissingBtn = document.getElementById("translateMissing");
+translateMissingBtn.addEventListener("click", async () => {
+  const id = els.sermonSelect.value;
+  if (!id) return;
+  try {
+    setStatus(`Translating missing English for sermon ${id}...`);
+    await api(`/sermon/${id}/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "marian", only_empty: true }),
+    });
+    await loadSegments();
+    setStatus("Missing segments translated.");
+  } catch (e) {
+    console.error(e);
+    setStatus(`Failed: ${e.message}`);
+  }
+});
+
+// FIX: use els.deleteSermon not deleteBtn
+els.deleteSermon.addEventListener("click", async () => {
+  const id = els.sermonSelect.value;
+  if (!id) return;
+  if (!confirm(`Delete sermon #${id}? This cannot be undone.`)) return;
+  try {
+    setStatus("Deleting...");
+    await api(`/sermon/${id}`, { method: "DELETE" });
+    await loadSermons();
+    els.segmentsBody.innerHTML = "";
+    setStatus("Deleted.");
+  } catch (e) {
+    console.error(e);
+    setStatus("Delete failed: " + e.message);
+  }
+});
+
+function download(format) {
+  const id = els.sermonSelect.value;
+  if (!id) return;
+  const url = `${BASE}/sermon/${id}/export?format=${format}`;
+  setStatus(`Exporting ${format.toUpperCase()}...`);
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error("Export failed");
+      return r.blob();
+    })
+    .then(blob => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `sermon_${id}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setStatus(`Downloaded ${format.toUpperCase()}.`);
+    })
+    .catch(e => {
+      console.error(e);
+      setStatus(e.message);
+    });
+}
+
+// FIX: use els.export* references
+els.exportCsv.addEventListener("click", () => download("csv"));
+els.exportTxt.addEventListener("click", () => download("txt"));
+els.exportPdf.addEventListener("click", () => download("pdf"));
 
 // init
 loadSermons().catch((e) => setStatus(`Init failed: ${e.message}`));
