@@ -16,6 +16,10 @@ const els = {
   modelName: document.getElementById("modelName"),
   translateStart: document.getElementById("translateStart"),
   segmentsBody: document.getElementById("segmentsBody"),
+  deleteSermon: document.getElementById("deleteSermon"),
+  exportCsv: document.getElementById("exportCsv"),
+  exportTxt: document.getElementById("exportTxt"),
+  exportPdf: document.getElementById("exportPdf"),
 };
 
 function setStatus(msg) {
@@ -209,6 +213,7 @@ els.translateStart.addEventListener("click", async () => {
   }
 });
 
+// Translate missing button (already OK)
 const translateMissingBtn = document.getElementById("translateMissing");
 translateMissingBtn.addEventListener("click", async () => {
   const id = els.sermonSelect.value;
@@ -227,6 +232,53 @@ translateMissingBtn.addEventListener("click", async () => {
     setStatus(`Failed: ${e.message}`);
   }
 });
+
+// FIX: use els.deleteSermon not deleteBtn
+els.deleteSermon.addEventListener("click", async () => {
+  const id = els.sermonSelect.value;
+  if (!id) return;
+  if (!confirm(`Delete sermon #${id}? This cannot be undone.`)) return;
+  try {
+    setStatus("Deleting...");
+    await api(`/sermon/${id}`, { method: "DELETE" });
+    await loadSermons();
+    els.segmentsBody.innerHTML = "";
+    setStatus("Deleted.");
+  } catch (e) {
+    console.error(e);
+    setStatus("Delete failed: " + e.message);
+  }
+});
+
+function download(format) {
+  const id = els.sermonSelect.value;
+  if (!id) return;
+  const url = `${BASE}/sermon/${id}/export?format=${format}`;
+  setStatus(`Exporting ${format.toUpperCase()}...`);
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error("Export failed");
+      return r.blob();
+    })
+    .then(blob => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `sermon_${id}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setStatus(`Downloaded ${format.toUpperCase()}.`);
+    })
+    .catch(e => {
+      console.error(e);
+      setStatus(e.message);
+    });
+}
+
+// FIX: use els.export* references
+els.exportCsv.addEventListener("click", () => download("csv"));
+els.exportTxt.addEventListener("click", () => download("txt"));
+els.exportPdf.addEventListener("click", () => download("pdf"));
 
 // init
 loadSermons().catch((e) => setStatus(`Init failed: ${e.message}`));

@@ -3,7 +3,7 @@
 API endpoints for sermon management: upload, list, get sermon and segments.
 """
 
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Body
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Body, Response
 from sqlalchemy.orm import Session
 from pathlib import Path
 from typing import Tuple, List, Optional
@@ -21,6 +21,10 @@ try:
     from PyPDF2 import PdfReader
 except ImportError:
     PdfReader = None
+try:
+    from fpdf import FPDF  # pip install fpdf2
+except ImportError:
+    FPDF = None
 
 router = APIRouter(prefix="/sermon", tags=["sermon"])
 
@@ -253,6 +257,10 @@ def translate_all(
     model_name = (payload or {}).get("model_name")
     only_empty = (payload or {}).get("only_empty", False)
 
+    segs = db.query(models.Segment)\
+        .filter(models.Segment.sermon_id == sermon_id)\
+        .order_by(models.Segment.segment_order.asc()).all()
+
     targets = []
     target_segments = []
     for s in segs:
@@ -272,5 +280,81 @@ def translate_all(
         if "confidence" in r:
             s.confidence = float(r["confidence"])
     db.commit()
-    return {"ok": True, "count": len(segs), "provider": provider, "model_name": model_name}
+    return {
+        "ok": True,
+        "count": len(target_segments),
+        "provider": provider,
+        "model_name": model_name,
+        "only_empty": only_empty
+    }
+
+# Delete a sermon and its segments
+@router.delete("/{sermon_id}")
+def delete_sermon(sermon_id: int, db: Session = Depends(get_db)):
+    sermon = db.query(models.Sermon).filter(models.Sermon.sermon_id == sermon_id).first()
+    if not sermon:
+        raise HTTPException(404, "Sermon not found")
+    db.query(models.Segment).filter(models.Segment.sermon_id == sermon_id).delete()
+    db.delete(sermon)
+    db.commit()
+    return {"ok": True, "deleted_sermon_id": sermon_id}
+
+# Export sermon segments to file (CSV, TXT, PDF)
+@router.get("/{sermon_id}/export")
+def export_sermon(sermon_id: int, format: str = "csv", db: Session = Depends(get_db)):
+    sermon = db.query(models.Sermon).filter(models.Sermon.sermon_id == sermon_id).first()
+    if not sermon:
+        raise HTTPException(404, "Sermon not found")
+    segs = db.query(models.Segment).filter(models.Segment.sermon_id == sermon_id)\
+        .order_by(models.Segment.segment_order.asc()).all()
+
+    def csv_escape(val: str) -> str:
+        val = (val or "").replace('"', '""')
+        return f'"{val}"'
+
+    if format == "csv":
+        buf = io.StringIO()
+        buf.write("segment_order,malay_text,english_text,confidence,vetted\n")
+        for s in segs:
+            buf.write(f"{s.segment_order},{csv_escape(s.malay_text)},{csv_escape(s.english_text)},{getattr(s,'confidence','')},{int(getattr(s,'vetted', False))}\n")
+        data = buf.getvalue().encode("utf-8")
+        return Response(
+            data,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=sermon_{sermon_id}.csv"}
+        )
+    if format == "txt":
+        lines = [f"# {sermon.title or ''}",
+                 f"Speaker: {sermon.speaker or ''}",
+                 ""]
+        for s in segs:
+            lines.append(f"{s.segment_order}. {s.malay_text}")
+            if s.english_text:
+                lines.append(f"   EN: {s.english_text}")
+        data = "\n".join(lines).encode("utf-8")
+        return Response(data, media_type="text/plain",
+                        headers={"Content-Disposition": f"attachment; filename=sermon_{sermon_id}.txt"})
+    if format == "pdf":
+        if FPDF is None:
+            raise HTTPException(500, "fpdf2 not installed (pip install fpdf2)")
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=12)
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, sermon.title or "", ln=1)
+        pdf.set_font("Arial", "", 11)
+        if sermon.speaker:
+            pdf.cell(0, 8, f"Speaker: {sermon.speaker}", ln=1)
+        pdf.ln(4)
+        for s in segs:
+            pdf.set_font("Arial", "B", 10)
+            pdf.multi_cell(0, 5, f"{s.segment_order}. {s.malay_text}")
+            if s.english_text:
+                pdf.set_font("Arial", "", 10)
+                pdf.multi_cell(0, 5, f"EN: {s.english_text}")
+            pdf.ln(2)
+        out = pdf.output(dest="S").encode("latin-1", errors="ignore")
+        return Response(out, media_type="application/pdf",
+                        headers={"Content-Disposition": f"attachment; filename=sermon_{sermon_id}.pdf"})
+    raise HTTPException(400, "Unsupported format")
 
