@@ -96,7 +96,9 @@ pip install -r requirements.txt
 
 ```bash
 cd backend/db
-mysql -u root -p < schema.sql
+# create DB/user with psql, then import schema:
+psql -U postgres -f schema.sql             # run as postgres superuser, or
+psql -U your_user -d your_db -f schema.sql # if DB/user already created
 ```
 
 ### 5. Run the Backend API
