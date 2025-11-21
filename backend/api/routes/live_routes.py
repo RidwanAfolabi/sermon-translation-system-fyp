@@ -96,3 +96,4 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
         if _is_open(websocket):
             await websocket.close()
         logger.info(f"[LIVE] closed sermon_id={sermon_id}")
+        logger.info(f"[LIVE] WebSocket accepted sermon_id={sermon_id}")

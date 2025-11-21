@@ -26,8 +26,15 @@ origins = [
 # Optional: Allow local frontend or dashboard access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "http://127.0.0.1:5501",
+        "http://localhost:5501",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000"
+    ],
+    allow_credentials=False,  # no cookies needed
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -35,7 +42,7 @@ app.add_middleware(
 # Register Routers (remove duplicate prefixes)
 app.include_router(sermon_routes.router, tags=["Sermon"])
 app.include_router(translation_routes.router, tags=["Translation"])
-app.include_router(live_routes.router, tags=["Live Streaming"])  # 👈 this line was added
+app.include_router(live_routes.router, prefix="/live", tags=["Live Streaming"])  # ADD prefix
 
 @app.get("/")
 def root():
