@@ -1,3 +1,5 @@
+// frontend/subtitle-interface/script.js
+
 (function() {
   const statusBox = document.getElementById("status-box");
   const subtitleBox = document.getElementById("subtitle-box");
