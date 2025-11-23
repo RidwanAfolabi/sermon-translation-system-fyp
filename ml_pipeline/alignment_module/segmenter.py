@@ -94,8 +94,8 @@ def merge_small(segs: List[str], min_chars: int = 35) -> List[str]:
         # Predict merged length (in chars)
         candidate = (buf + " " + s).strip()
 
-        # Only merge if still small AND <= 18 words
-        if len(candidate) < min_chars and len(candidate.split()) <= 18:
+        # Only merge if still small AND <= 15 words
+        if len(candidate) < min_chars and len(candidate.split()) <= 15:
             buf = candidate
         else:
             if buf:
