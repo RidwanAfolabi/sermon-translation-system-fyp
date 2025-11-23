@@ -1,3 +1,5 @@
+# ml_pipeline/speech_recognition/whisper_listener.py
+
 """
 Realtime Malay + Arabic speech recognition using Faster-Whisper Large-V3.
 Optimized for masjid acoustics (echo, reverb, low-volume Khatib voices).
