@@ -251,8 +251,8 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
     finally:
         try:
             stop_listener()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"[LIVE] stop_listener() error: {e}", exc_info=True)
         try:
             db.close()
         except Exception:
