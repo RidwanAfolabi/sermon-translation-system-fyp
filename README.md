@@ -182,7 +182,7 @@ $env:HF_HUB_DISABLE_SYMLINKS = "1"
 
 ```powershell
 # Create database and user (run as postgres superuser)
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -c "CREATE USER fyp_user WITH ENCRYPTED PASSWORD 'YourPassword';"
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -c "CREATE USER fyp_user WITH ENCRYPTED PASSWORD '<YOUR_PASSWORD>';"
 & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -c "CREATE DATABASE sermon_translation_db OWNER fyp_user;"
 
 # Run Alembic migrations
