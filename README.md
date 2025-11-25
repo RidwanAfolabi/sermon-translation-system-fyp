@@ -401,7 +401,10 @@ git pull origin main
 git checkout -b feature/your-feature-name
 
 # 4. Make changes, commit, push
-git add .
+# Stage only intended changes (recommended):
+git add <specific-files>
+# Or interactively stage changes:
+git add -p
 git commit -m "Descriptive commit message"
 git push origin feature/your-feature-name
 
