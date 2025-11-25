@@ -263,7 +263,7 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
 
         try:
             db.close()
-        except:
+        except Exception:
             pass
 
         try:
