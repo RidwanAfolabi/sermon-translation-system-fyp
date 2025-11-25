@@ -436,4 +436,4 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 ---
 
-> *"Accurate translation isn't just about words — it's about preserving meaning, culture, and faith, and empowering people through understanding the message despite diverse circumstances."*
+> *"Accurate translation isn't just about words - it's about preserving meaning, culture, and faith, and empowering people through understanding the message despite diverse circumstances."*
