@@ -385,13 +385,37 @@ CREATE TABLE segments (
 
 ## 👥 Contributing
 
-We welcome collaboration!
-Please read [`docs/contribution_guidelines.md`](docs/contribution_guidelines.md) before submitting pull requests.
+### For Collaborators (Team Members)
+
+You have direct write access — **no need to fork**.
+
+```powershell
+# 1. Clone (first time only)
+git clone https://github.com/RidwanAfolabi/sermon-translation-system-fyp.git
+cd sermon-translation-system-fyp
+
+# 2. Get latest changes
+git pull origin main
+
+# 3. Create feature branch
+git checkout -b feature/your-feature-name
+
+# 4. Make changes, commit, push
+git add .
+git commit -m "Descriptive commit message"
+git push origin feature/your-feature-name
+
+# 5. Open Pull Request on GitHub → merge after review
+```
+
+### For External Contributors
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature-name`)
-3. Commit changes (`git commit -m "Added new feature"`)
-4. Push and create a PR
+2. Clone your fork
+3. Create a feature branch
+4. Submit a Pull Request
+
+Please read [`docs/contribution_guidelines.md`](docs/contribution_guidelines.md) for coding standards.
 
 ---
 
