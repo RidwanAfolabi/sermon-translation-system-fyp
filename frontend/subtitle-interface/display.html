@@ -1,0 +1,70 @@
+<!-- frontend/subtitle-interface/display.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Khutbah Live Display</title>
+
+  <style>
+    body {
+      margin:0;
+      background:#000;
+      font-family:Inter, system-ui, sans-serif;
+      color:#fff;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      overflow:hidden;
+    }
+
+    #stack-container {
+      width:90%;
+      max-width:1300px;
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-end;
+      gap:14px;
+    }
+
+    .line {
+      font-size:2.4rem;
+      font-weight:700;
+      text-align:center;
+      padding:18px 26px;
+      border-radius:14px;
+      background:rgba(255,255,255,0.05);
+      opacity:0;
+      transform:translateY(14px);
+      transition:all .45s ease;
+      border-left:5px solid rgba(16,185,129,0.55);
+      line-height:1.25;
+    }
+
+    .show {
+      opacity:1;
+      transform:translateY(0);
+    }
+
+    .fade {
+      opacity:0.35;
+      transform:translateY(4px);
+    }
+
+    @media(max-width:900px){
+      .line {
+        font-size:1.6rem;
+        padding:14px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="stack-container"></div>
+
+  <script src="display.js"></script>
+</body>
+</html>
