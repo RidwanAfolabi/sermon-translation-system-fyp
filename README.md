@@ -162,7 +162,7 @@ Create a `.env` file or set environment variables:
 
 ```powershell
 # Database connection
-$env:DATABASE_URL = "postgresql+psycopg2://fyp_user:YourPassword@localhost:5432/sermon_translation_db"
+$env:DATABASE_URL = "postgresql+psycopg2://fyp_user:<YOUR_PASSWORD>@localhost:5432/sermon_translation_db"
 
 # Whisper ASR settings
 $env:WHISPER_MODEL = "large-v3"
