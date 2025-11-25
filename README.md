@@ -167,7 +167,7 @@ $env:DATABASE_URL = "postgresql+psycopg2://fyp_user:<YOUR_PASSWORD>@localhost:54
 # Whisper ASR settings
 $env:WHISPER_MODEL = "large-v3"
 $env:WHISPER_LANG = "ms"
-$env:WHISPER_BLOCK_SECS = "5"
+$env:WHISPER_BLOCK_SECS = "6"
 $env:WHISPER_DEVICE = "auto"
 
 # Alignment settings
