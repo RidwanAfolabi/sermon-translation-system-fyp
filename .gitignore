@@ -24,3 +24,5 @@ vosk_models/
 **/__pycache__/
 *.wav
 backend/models_unused/
+
+.venv/
