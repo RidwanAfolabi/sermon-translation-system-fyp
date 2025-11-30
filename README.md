@@ -153,6 +153,10 @@ python -m venv venv311
 ### 3. Install Dependencies
 
 ```powershell
+# Install PyTorch with CUDA first
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# Then install remaining dependencies
 pip install -r requirements.txt
 ```
 
