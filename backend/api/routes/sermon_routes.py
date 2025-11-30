@@ -253,7 +253,7 @@ def translate_all(
     payload: dict = Body(...),
     db: Session = Depends(get_db)
 ):
-    provider = (payload or {}).get("provider", "marian")
+    provider = (payload or {}).get("provider", "gemini")  # Default to gemini now
     model_name = (payload or {}).get("model_name")
     only_empty = (payload or {}).get("only_empty", False)
 
@@ -273,7 +273,7 @@ def translate_all(
         return {"ok": True, "count": 0, "provider": provider, "skipped": True}
 
     from ml_pipeline.translation_model.inference import translate_text_batch
-    results = translate_text_batch(targets)
+    results = translate_text_batch(targets, provider=provider)  # Pass provider
 
     for s, r in zip(target_segments, results):
         s.english_text = r["text"]
