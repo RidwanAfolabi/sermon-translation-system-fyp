@@ -19,6 +19,7 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
     connected,
     connecting,
     sermonId: streamSermonId,
+    sermonTitle,
     currentSubtitle,
     lastASR,
     currentSegmentId,
@@ -39,6 +40,19 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
     loadAllSermons();
   }, []);
 
+  // Keep sermon metadata in sync with dropdown data
+  useEffect(() => {
+    if (!selectedSermonId) {
+      setSermon(null);
+      return;
+    }
+
+    const found = allSermons.find(s => s.sermon_id === selectedSermonId);
+    if (found) {
+      setSermon(found);
+    }
+  }, [selectedSermonId, allSermons]);
+
   // Sync selected sermon with stream sermon if stream is active
   useEffect(() => {
     if (streamSermonId && !selectedSermonId) {
@@ -50,7 +64,6 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
     if (selectedSermonId) {
       loadSermonData();
     } else {
-      setSermon(null);
       setSegments([]);
     }
   }, [selectedSermonId]);
@@ -79,8 +92,6 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
     try {
       const segmentsData = await sermonApi.getSegments(selectedSermonId);
       
-      const foundSermon = allSermons.find(s => s.sermon_id === selectedSermonId);
-      setSermon(foundSermon || null);
       setSegments(segmentsData);
     } catch (err) {
       console.error('Failed to load sermon:', err);
@@ -118,7 +129,7 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
   const currentSegment = segments.find(s => s.segment_id === currentSegmentId);
   const currentIndex = currentSegment ? segments.findIndex(s => s.segment_id === currentSegmentId) : -1;
 
-  if (loading) {
+  if (loading && !selectedSermonId) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#f8f9fa]">
         <div className="text-center">
@@ -137,7 +148,7 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
           <div className="flex items-center gap-3">
             <Monitor size={24} className="text-[#0d7377]" />
             <span className="text-[#212529] font-medium">
-              {sermon ? sermon.title : 'Select a sermon to start monitoring'}
+              {selectedSermonId ? (sermon?.title || sermonTitle || 'Live Sermon') : 'Select a sermon to start monitoring'}
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -188,7 +199,7 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
       </div>
 
       <div className="flex-1 p-8 overflow-y-auto">
-        {!sermon ? (
+        {!selectedSermonId ? (
           <Card className="max-w-2xl mx-auto text-center py-12">
             <Radio size={48} className="mx-auto mb-4 text-[#0d7377]" />
             <h3 className="mb-2">Select a Sermon for Live Monitoring</h3>

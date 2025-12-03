@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { sermonApi, Sermon } from '../services/api';
 import { Radio, ArrowLeft, Settings } from 'lucide-react';
 import { useLiveStream } from '../contexts/LiveStreamContext';
@@ -24,10 +24,15 @@ export function LiveDisplay({ sermonId: initialSermonId, onNavigate }: LiveDispl
 
   const [allSermons, setAllSermons] = useState<Sermon[]>([]);
   const [userOpenedSelector, setUserOpenedSelector] = useState(false);
+  const currentSubtitleRef = useRef<HTMLDivElement | null>(null);
   
   // Show selector ONLY if user explicitly opened it OR there's no active stream at all
   const hasActiveStream = connected || connecting || !!streamSermonId;
   const showSelector = userOpenedSelector || (!hasActiveStream && !initialSermonId);
+  const historyDisplayCount = 5;
+  const historyOpacity = ['text-white/80', 'text-white/70', 'text-white/60', 'text-white/50', 'text-white/40'];
+  const historySubtitles = previousSubtitles.slice(0, historyDisplayCount);
+  const orderedHistory = [...historySubtitles].reverse();
 
   // Auto-close selector when stream becomes active
   useEffect(() => {
@@ -42,6 +47,13 @@ export function LiveDisplay({ sermonId: initialSermonId, onNavigate }: LiveDispl
 
   // Don't auto-connect - only connect when user explicitly selects
   // The context already maintains the connection
+
+  // Keep current subtitle centered when it changes
+  useEffect(() => {
+    if (currentSubtitleRef.current) {
+      currentSubtitleRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentSubtitle]);
 
   const loadSermons = async () => {
     try {
@@ -142,39 +154,40 @@ export function LiveDisplay({ sermonId: initialSermonId, onNavigate }: LiveDispl
         </div>
       </div>
 
-      {/* Main Display - All 3 Subtitles on One Screen */}
-      <div className="flex-1 flex flex-col justify-center px-8 py-4 overflow-hidden">
-        
-        {/* Subtitle Container - Vertical Stack */}
-        <div className="space-y-4 max-w-6xl mx-auto w-full">
-          
-          {/* Previous Subtitle 2 (Oldest) */}
-          <div className="text-center px-4">
-            <p className={`text-xl md:text-2xl lg:text-3xl leading-relaxed transition-all duration-300 ${previousSubtitles[1] ? 'text-white/50' : 'text-white/20'}`}>
-              {previousSubtitles[1] || '...'}
-            </p>
-          </div>
+      {/* Main Display - Previous lines stack above current */}
+      <div className="flex-1 flex flex-col px-8 py-4 overflow-y-auto scroll-smooth">
+        <div className="max-w-6xl mx-auto w-full flex flex-col gap-8">
+          {/* Previous Subtitles (oldest at top, newest closest to current line) */}
+          {orderedHistory.length > 0 && (
+            <div className="space-y-3">
+              <div className="text-center text-white/40 text-xs md:text-sm tracking-[0.4em] uppercase">Previous Lines</div>
+              <div className="space-y-2">
+                {orderedHistory.map((subtitle, index) => {
+                  const opacityIndex = orderedHistory.length - 1 - index;
+                  const opacityClass = historyOpacity[opacityIndex] || 'text-white/30';
+                  return (
+                    <div key={index} className="text-center px-4 subtitle-fade">
+                      <p className={`text-2xl md:text-3xl lg:text-4xl leading-relaxed font-medium ${opacityClass}`}>
+                        {subtitle}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-          {/* Divider */}
-          <div className="border-t border-white/10 mx-auto w-1/2"></div>
-
-          {/* Previous Subtitle 1 (Recent) */}
-          <div className="text-center px-4">
-            <p className={`text-2xl md:text-3xl lg:text-4xl leading-relaxed font-medium transition-all duration-300 ${previousSubtitles[0] ? 'text-white/70' : 'text-white/20'}`}>
-              {previousSubtitles[0] || '...'}
-            </p>
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-[#0d7377]/50 mx-auto w-2/3"></div>
-
-          {/* Current Subtitle (Main) */}
-          <div className="text-center px-4 py-4 rounded-xl border border-[#0d7377]/30" style={{ backgroundColor: 'rgba(13, 115, 119, 0.2)' }}>
+          {/* Current Subtitle */}
+          <div
+            key={currentSubtitle || 'waiting'}
+            ref={currentSubtitleRef}
+            className="text-center px-6 py-9 rounded-2xl border border-[#0d7377]/40 shadow-[0_0_80px_rgba(13,115,119,0.25)] subtitle-fade"
+            style={{ backgroundColor: 'rgba(13, 115, 119, 0.18)' }}
+          >
             <p className="text-3xl md:text-4xl lg:text-5xl leading-relaxed font-semibold text-white">
               {currentSubtitle || (connected ? 'Waiting for sermon to begin...' : 'Select a sermon to start')}
             </p>
           </div>
-
         </div>
       </div>
 

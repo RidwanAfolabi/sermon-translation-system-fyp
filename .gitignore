@@ -1,6 +1,7 @@
 # Environment files
 .env
 venv/
+.venv/
 venv311/
 __pycache__/
 *.py[cod]
