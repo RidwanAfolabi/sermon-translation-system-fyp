@@ -155,7 +155,7 @@ export function LiveDisplay({ sermonId: initialSermonId, onNavigate }: LiveDispl
       </div>
 
       {/* Main Display - Previous lines stack above current */}
-      <div className="flex-1 flex flex-col justify-center px-8 py-4 overflow-y-auto scroll-smooth">
+      <div className="flex-1 flex flex-col px-8 py-4 overflow-y-auto scroll-smooth">
         <div className="max-w-6xl mx-auto w-full flex flex-col gap-8">
           {/* Previous Subtitles (oldest at top, newest closest to current line) */}
           {orderedHistory.length > 0 && (
