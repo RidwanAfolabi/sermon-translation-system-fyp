@@ -166,7 +166,7 @@ export function LiveDisplay({ sermonId: initialSermonId, onNavigate }: LiveDispl
                   const opacityIndex = orderedHistory.length - 1 - index;
                   const opacityClass = historyOpacity[opacityIndex] || 'text-white/30';
                   return (
-                    <div key={`history-${index}-${subtitle}`} className="text-center px-4 subtitle-fade">
+                    <div key={index} className="text-center px-4 subtitle-fade">
                       <p className={`text-2xl md:text-3xl lg:text-4xl leading-relaxed font-medium ${opacityClass}`}>
                         {subtitle}
                       </p>
