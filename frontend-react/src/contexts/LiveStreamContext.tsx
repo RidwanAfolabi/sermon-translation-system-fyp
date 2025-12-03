@@ -38,7 +38,7 @@ interface LiveStreamState {
   sermonId: number | null;
   sermonTitle: string;
   currentSubtitle: string;
-  previousSubtitles: string[]; // Last 2 subtitles
+  previousSubtitles: string[]; // Last matched subtitles (newest first)
   lastASR: string;
   currentSegmentId: number | null;
   segmentOrder: number;
@@ -54,6 +54,7 @@ interface LiveStreamContextType extends LiveStreamState {
 }
 
 const LiveStreamContext = createContext<LiveStreamContextType | null>(null);
+const MAX_PREVIOUS_SUBTITLES = 5;
 
 export function LiveStreamProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<LiveStreamState>({
@@ -62,7 +63,7 @@ export function LiveStreamProvider({ children }: { children: ReactNode }) {
     sermonId: null,
     sermonTitle: 'Live Sermon',
     currentSubtitle: '',
-    previousSubtitles: [], // Track last 2 subtitles
+    previousSubtitles: [], // Track last few subtitles for history view
     lastASR: '',
     currentSegmentId: null,
     segmentOrder: 0,
@@ -144,11 +145,11 @@ export function LiveStreamProvider({ children }: { children: ReactNode }) {
           if (data.matched && data.segment) {
             setState(prev => {
               const newSubtitle = data.segment!.english_text || data.segment!.malay_text;
-              // Keep last 2 previous subtitles
-              const newPrevious = prev.currentSubtitle && prev.currentSubtitle !== 'Waiting for sermon to begin...'
-                ? [prev.currentSubtitle, ...prev.previousSubtitles].slice(0, 2)
+              const shouldPushCurrent = prev.currentSubtitle && prev.currentSubtitle !== 'Waiting for sermon to begin...';
+              const newPrevious = shouldPushCurrent
+                ? [prev.currentSubtitle, ...prev.previousSubtitles].slice(0, MAX_PREVIOUS_SUBTITLES)
                 : prev.previousSubtitles;
-              
+
               return {
                 ...prev,
                 previousSubtitles: newPrevious,
