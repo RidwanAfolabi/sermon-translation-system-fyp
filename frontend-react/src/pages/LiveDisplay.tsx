@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Radio, Settings } from 'lucide-react';
 
 interface LiveDisplayProps {
-  sermonId?: number;
   onNavigate?: (page: string) => void;
 }
 
