@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Mic, Monitor, Users, Activity, AlertCircle, Loader2, Radio, ExternalLink } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -13,6 +13,9 @@ interface ControlRoomProps {
   onNavigate?: (page: string, sermonId?: number) => void;
 }
 
+const LIVE_DISPLAY_STORAGE_KEY = 'liveDisplayContext';
+const BROADCAST_CHANNEL_NAME = 'khutbah_subtitles';
+
 export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRoomProps) {
   // Use shared live stream context
   const {
@@ -21,8 +24,11 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
     sermonId: streamSermonId,
     sermonTitle,
     currentSubtitle,
+    previousSubtitles,
     lastASR,
     currentSegmentId,
+    segmentOrder,
+    totalSegments,
     matchScore,
     sessionTime,
     connect,
@@ -34,7 +40,117 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
   const [sermon, setSermon] = useState<Sermon | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clientCount, setClientCount] = useState(1);
+  const [clientCount] = useState(1);
+
+  // BroadcastChannel for sending subtitles to LiveDisplay in new tab
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const lastBroadcastedSubtitleRef = useRef<string>('');
+
+  // Initialize BroadcastChannel
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      broadcastChannelRef.current = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+      
+      // Listen for sync requests from LiveDisplay
+      broadcastChannelRef.current.onmessage = (ev) => {
+        const msg = ev.data;
+        if (msg?.type === 'request-sync' && connected) {
+          // Send current state to the requesting LiveDisplay
+          broadcastChannelRef.current?.postMessage({
+            type: 'status',
+            connected: connected,
+            connecting: connecting,
+            sermonTitle: sermonTitle,
+            sermonId: streamSermonId,
+            sessionTime: sessionTime,
+          });
+          if (currentSubtitle) {
+            broadcastChannelRef.current?.postMessage({
+              type: 'subtitle',
+              text: currentSubtitle,
+              order: segmentOrder,
+              previousSubtitles: previousSubtitles,
+              sermonTitle: sermonTitle,
+              totalSegments: totalSegments,
+              sessionTime: sessionTime,
+              connected: connected,
+            });
+          }
+        }
+      };
+    }
+    return () => {
+      broadcastChannelRef.current?.close();
+    };
+  }, [connected, connecting, sermonTitle, streamSermonId, sessionTime, currentSubtitle, segmentOrder, previousSubtitles, totalSegments]);
+
+  // Broadcast subtitle updates to LiveDisplay
+  useEffect(() => {
+    if (!broadcastChannelRef.current) return;
+    if (!currentSubtitle || currentSubtitle === 'Listening...' || currentSubtitle === 'Waiting for speech...') return;
+    if (currentSubtitle === lastBroadcastedSubtitleRef.current) return;
+
+    lastBroadcastedSubtitleRef.current = currentSubtitle;
+
+    broadcastChannelRef.current.postMessage({
+      type: 'subtitle',
+      text: currentSubtitle,
+      order: segmentOrder,
+      previousSubtitles: previousSubtitles,
+      sermonTitle: sermonTitle,
+      totalSegments: totalSegments,
+      sessionTime: sessionTime,
+      connected: connected,
+    });
+  }, [currentSubtitle, segmentOrder, previousSubtitles, sermonTitle, totalSegments, sessionTime, connected]);
+
+  // Broadcast connection status changes
+  useEffect(() => {
+    if (!broadcastChannelRef.current) return;
+    
+    broadcastChannelRef.current.postMessage({
+      type: 'status',
+      connected: connected,
+      connecting: connecting,
+      sermonTitle: sermonTitle,
+      sermonId: streamSermonId,
+      sessionTime: sessionTime,
+    });
+  }, [connected, connecting, sermonTitle, streamSermonId, sessionTime]);
+
+  // Periodic status broadcast to keep LiveDisplay in sync (every 2 seconds when connected)
+  useEffect(() => {
+    if (!broadcastChannelRef.current || !connected) return;
+    
+    const interval = setInterval(() => {
+      broadcastChannelRef.current?.postMessage({
+        type: 'status',
+        connected: connected,
+        connecting: connecting,
+        sermonTitle: sermonTitle,
+        sermonId: streamSermonId,
+        sessionTime: sessionTime,
+      });
+    }, 2000);
+    
+    return () => clearInterval(interval);
+  }, [connected, connecting, sermonTitle, streamSermonId, sessionTime]);
+
+  // Helper to persist context for LiveDisplay
+  const persistLiveDisplayContext = (id: number, title?: string | null) => {
+    try {
+      sessionStorage.setItem(
+        LIVE_DISPLAY_STORAGE_KEY,
+        JSON.stringify({
+          sermonId: id,
+          sermonTitle: title || sermon?.title || '',
+          updatedAt: Date.now(),
+        })
+      );
+    } catch (err) {
+      console.warn('Failed to persist live display context', err);
+    }
+  };
 
   useEffect(() => {
     loadAllSermons();
@@ -60,6 +176,13 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
     }
   }, [streamSermonId]);
 
+  // Persist context when stream is active
+  useEffect(() => {
+    if (streamSermonId) {
+      persistLiveDisplayContext(streamSermonId, sermonTitle);
+    }
+  }, [streamSermonId, sermonTitle]);
+
   useEffect(() => {
     if (selectedSermonId) {
       loadSermonData();
@@ -73,9 +196,7 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
       const sermons = await sermonApi.list();
       setAllSermons(sermons);
       
-      // If no sermon selected but we have vetted sermons, suggest the first one
       if (!selectedSermonId && sermons.length > 0) {
-        const vettedSermons = sermons.filter(s => s.status === 'vetted' || s.status === 'translated');
         // Don't auto-select, just load the list
       }
     } catch (err) {
@@ -106,6 +227,7 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
       toast.error('Please select a sermon first');
       return;
     }
+    persistLiveDisplayContext(selectedSermonId, sermon?.title);
     connect(selectedSermonId, sermon?.title);
   };
 
@@ -113,10 +235,55 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
     disconnect();
   };
 
+  // Open LiveDisplay in a NEW TAB
   const openLiveDisplay = () => {
-    if (onNavigate) {
-      onNavigate('liveDisplay', selectedSermonId);
+    if (!selectedSermonId && !streamSermonId) {
+      toast.error('Please select a sermon first');
+      return;
     }
+
+    const sermonIdToUse = streamSermonId || selectedSermonId;
+    if (sermonIdToUse) {
+      persistLiveDisplayContext(sermonIdToUse, sermon?.title || sermonTitle);
+    }
+
+    // Open the LiveDisplay using hash-based URL to avoid server routing issues
+    const liveDisplayUrl = `${window.location.origin}/#/live-display`;
+    
+    // Use setTimeout to avoid popup blocker detection issues
+    const newWindow = window.open(liveDisplayUrl, 'live-display-window');
+    
+    // Check after a short delay if the window was blocked
+    setTimeout(() => {
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        toast.error('Unable to open display. Please allow pop-ups for this site.');
+      } else {
+        toast.success('Live Display opened in new tab');
+        // Send immediate sync to the new window
+        if (broadcastChannelRef.current && connected) {
+          broadcastChannelRef.current.postMessage({
+            type: 'status',
+            connected: connected,
+            connecting: connecting,
+            sermonTitle: sermonTitle,
+            sermonId: streamSermonId,
+            sessionTime: sessionTime,
+          });
+          if (currentSubtitle) {
+            broadcastChannelRef.current.postMessage({
+              type: 'subtitle',
+              text: currentSubtitle,
+              order: segmentOrder,
+              previousSubtitles: previousSubtitles,
+              sermonTitle: sermonTitle,
+              totalSegments: totalSegments,
+              sessionTime: sessionTime,
+              connected: connected,
+            });
+          }
+        }
+      }
+    }, 500);
   };
 
   const formatTime = (seconds: number) => {
@@ -280,14 +447,14 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
                         onClick={openLiveDisplay}
                         className="bg-[#00e676]/20 hover:bg-[#00e676]/30 text-[#00c853] border-[#00e676]/50"
                       >
-                        View Display
+                        View Display (New Tab)
                       </Button>
                     </>
                   )}
                 </div>
                 <p className="text-sm text-[#6c757d] mt-3">
                   {connected 
-                    ? 'Stream is live! Click "View Display" to see the congregation view while keeping the stream running.'
+                    ? 'Stream is live! Click "View Display" to open the congregation view in a new tab.'
                     : 'Note: This is a read-only monitoring view. The ASR and alignment run automatically when connected.'
                   }
                 </p>
@@ -383,7 +550,7 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
                 </div>
 
                 <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {segments.slice(Math.max(0, currentIndex - 1), currentIndex + 4).map((segment, idx) => {
+                  {segments.slice(Math.max(0, currentIndex - 1), currentIndex + 4).map((segment) => {
                     const isCurrentSegment = segment.segment_id === currentSegmentId;
                     const isPast = currentIndex > -1 && segments.indexOf(segment) < currentIndex;
                     

@@ -26,4 +26,8 @@ vosk_models/
 *.wav
 backend/models_unused/
 
+# Vite cache
+.vite/
+frontend-react/.vite/
+
 .venv/
