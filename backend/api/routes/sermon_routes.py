@@ -207,8 +207,8 @@ def patch_segment(segment_id: int, payload: dict = Body(...), db: Session = Depe
         "segment_id": seg.segment_id,
         "malay_text": seg.malay_text,
         "english_text": seg.english_text,
-        "confidence": seg.confidence_score,  # ✅ Fixed
-        "vetted": seg.is_vetted,  # ✅ Fixed
+        "confidence": seg.confidence_score,
+        "vetted": seg.is_vetted,
         "retranslated": retranslate or changed_malay
     }
 
