@@ -214,15 +214,15 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
                     "spoken": spoken,
                     "buffer_text": buffer_text,
                     "buffer_chunks": len(asr_buffer_chunks),
-                    "score": round(chosen_score or 0.0, 3),
+                    "score": round(chosen_score or 0.0, 3),  # ✅ Fixed
                     "matched": matched,
-                    "threshold": round(dynamic_thresh, 3),
-                    "candidate": {"segment_id": chosen_id, "order": chosen_order},
+                    "threshold": round(dynamic_thresh, 3),  # ✅ Fixed
                     "aligner": ALIGNER_MODE,
-                    "segment": None
+                    "candidate": {"segment_id": chosen_id, "order": chosen_order},
+                    "segment": None  # ✅ Fixed - set to None initially
                 }
 
-                if matched:
+                if matched and chosen_seg:
                     payload["segment"] = {
                         "segment_id": chosen_seg.segment_id,
                         "order": chosen_seg.segment_order,
@@ -259,17 +259,7 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
                 stop_listener()
                 logger.info("[LIVE] stop_listener() called (no clients remain).")
             except Exception as e:
-                logger.error(f"[LIVE] stop_listener() error: {e}", exc_info=True)
+                logger.warning(f"[LIVE] stop_listener error: {e}")
 
-        try:
-            db.close()
-        except Exception:
-            pass
-
-        try:
-            if _is_open(websocket):
-                await websocket.close()
-        except:
-            pass
-
-        logger.info(f"[LIVE] closed sermon_id={sermon_id}")
+        # Close database session
+        db.close()

@@ -133,6 +133,18 @@ export const sermonApi = {
     });
     return response.data;
   },
+
+  // Get single sermon
+  get: async (sermonId: number): Promise<Sermon> => {
+    const response = await api.get(ENDPOINTS.SERMON_DETAIL(sermonId));
+    return response.data;
+  },
+
+  // Get dashboard stats
+  getStats: async (): Promise<DashboardStats> => {
+    const response = await api.get(ENDPOINTS.SERMON_STATS);
+    return response.data;
+  },
 };
 
 // Translation API

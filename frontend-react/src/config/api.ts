@@ -19,6 +19,10 @@ export const ENDPOINTS = {
   
   // Translation endpoints (from translation_routes.py)
   TRANSLATE: '/translate',
+  
+  // Add new endpoints
+  SERMON_STATS: '/sermon/dashboard/stats',
+  SERMON_DETAIL: (id: number) => `/sermon/${id}`,
 };
 
 // WebSocket URLs
