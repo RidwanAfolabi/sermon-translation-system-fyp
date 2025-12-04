@@ -32,5 +32,7 @@
           ws: true,
         },
       },
+      // Handle SPA client-side routing - serve index.html for all non-file routes
+      historyApiFallback: true,
     },
   });

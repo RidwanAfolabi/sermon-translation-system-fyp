@@ -1,5 +1,5 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LiveStreamProvider } from './contexts/LiveStreamContext';
@@ -76,7 +76,7 @@ export default function App() {
   return (
     <AuthProvider>
       <LiveStreamProvider>
-        <BrowserRouter>
+        <HashRouter>
           <AppRouter />
           <Toaster
             position="top-right"
@@ -86,7 +86,7 @@ export default function App() {
               style: { background: 'white', border: '1px solid #e0e0e0' },
             }}
           />
-        </BrowserRouter>
+        </HashRouter>
       </LiveStreamProvider>
     </AuthProvider>
   );
@@ -96,9 +96,21 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
+      {/* LiveDisplay can be accessed standalone (opened in new tab from ControlRoom) */}
+      <Route path="/live-display" element={<StandaloneLiveDisplay />} />
       <Route path="/*" element={<RequireAuth><ProtectedApp /></RequireAuth>} />
     </Routes>
   );
+}
+
+// Standalone LiveDisplay wrapper - accessible without full auth for new tab usage
+function StandaloneLiveDisplay() {
+  const navigate = useNavigate();
+  const handleNavigate = (page: string) => {
+    navigate(`/${page === 'controlRoom' ? 'control-room' : page}`);
+  };
+  
+  return <LiveDisplay onNavigate={handleNavigate} />;
 }
 
 function LoginRoute() {
