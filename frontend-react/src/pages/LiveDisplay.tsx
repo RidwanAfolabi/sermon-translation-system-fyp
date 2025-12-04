@@ -20,7 +20,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
   const [connected, setConnected] = useState<boolean>(false);
   const [connecting, setConnecting] = useState<boolean>(true);
   
-  const [manualSelector, setManualSelector] = useState(false);
+  const [showManualSelector, setShowManualSelector] = useState(false);
   const [noControlRoom, setNoControlRoom] = useState(false);
   
   const currentSubtitleRef = useRef<HTMLDivElement | null>(null);
