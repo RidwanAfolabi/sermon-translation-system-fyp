@@ -99,6 +99,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
     // Longer timeout to allow for BroadcastChannel connection
     connectionCheckTimeoutRef.current = setTimeout(() => {
       setConnecting(false);
+      setNoControlRoom(true);
       // Only show "no control room" if we haven't received any data
     }, 5000);
 
