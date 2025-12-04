@@ -190,7 +190,7 @@ def patch_segment(segment_id: int, payload: dict = Body(...), db: Session = Depe
         seg.english_text = english_text
 
     if vetted is not None:
-        seg.is_vetted = bool(vetted)  # ✅ Fixed - use correct DB field
+        seg.is_vetted = bool(vetted)
 
     # On demand retranslation (if malay changed or explicit flag)
     if retranslate or (changed_malay and english_text is None):
