@@ -164,8 +164,8 @@ def get_segments(sermon_id: int, db: Session = Depends(get_db)):
             "segment_order": x.segment_order,
             "malay_text": x.malay_text,
             "english_text": x.english_text,
-            "confidence": x.confidence_score,  # ✅ Fixed
-            "vetted": x.is_vetted,  # ✅ Fixed
+            "confidence": x.confidence_score,
+            "vetted": x.is_vetted,
         } for x in segs
     ]
 
