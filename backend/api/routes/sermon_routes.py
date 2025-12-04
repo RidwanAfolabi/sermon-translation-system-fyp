@@ -163,9 +163,9 @@ def get_segments(sermon_id: int, db: Session = Depends(get_db)):
             "segment_id": x.segment_id,
             "segment_order": x.segment_order,
             "malay_text": x.malay_text,
-            "english_text": getattr(x, "english_text", None),
-            "confidence": getattr(x, "confidence", None),
-            "vetted": getattr(x, "vetted", False),
+            "english_text": x.english_text,
+            "confidence": x.confidence_score,  # ✅ Fixed
+            "vetted": x.is_vetted,  # ✅ Fixed
         } for x in segs
     ]
 
@@ -190,7 +190,7 @@ def patch_segment(segment_id: int, payload: dict = Body(...), db: Session = Depe
         seg.english_text = english_text
 
     if vetted is not None:
-        seg.vetted = bool(vetted)
+        seg.is_vetted = bool(vetted)  # ✅ Fixed - use correct DB field
 
     # On demand retranslation (if malay changed or explicit flag)
     if retranslate or (changed_malay and english_text is None):
@@ -207,8 +207,8 @@ def patch_segment(segment_id: int, payload: dict = Body(...), db: Session = Depe
         "segment_id": seg.segment_id,
         "malay_text": seg.malay_text,
         "english_text": seg.english_text,
-        "confidence": getattr(seg, "confidence", None),
-        "vetted": getattr(seg, "vetted", False),
+        "confidence": seg.confidence_score,  # ✅ Fixed
+        "vetted": seg.is_vetted,  # ✅ Fixed
         "retranslated": retranslate or changed_malay
     }
 
@@ -410,4 +410,47 @@ def export_sermon(sermon_id: int, format: str = "csv", db: Session = Depends(get
         )
 
     raise HTTPException(400, "Unsupported format")
+
+# Add this new endpoint:
+@router.get("/dashboard/stats")
+def get_dashboard_stats(db: Session = Depends(get_db)):
+    """Get dashboard statistics for React frontend."""
+    total_sermons = db.query(models.Sermon).count()
+    
+    # Count segments
+    total_segments = db.query(models.Segment).count()
+    vetted_segments = db.query(models.Segment).filter(models.Segment.is_vetted == True).count()
+    
+    # Count sermons by status
+    pending_review = db.query(models.Sermon).filter(
+        models.Sermon.status.in_(['translated', 'segmented'])
+    ).count()
+    
+    vetted_ready = db.query(models.Sermon).filter(
+        models.Sermon.status == 'vetted'
+    ).count()
+    
+    return {
+        "total_sermons": total_sermons,
+        "pending_review": pending_review,
+        "vetted_ready": vetted_ready,
+        "total_segments": total_segments,
+        "vetted_segments": vetted_segments,
+    }
+
+# Get a single sermon by ID
+@router.get("/{sermon_id}")
+def get_sermon(sermon_id: int, db: Session = Depends(get_db)):
+    """Get a single sermon by ID."""
+    sermon = db.query(models.Sermon).filter(models.Sermon.sermon_id == sermon_id).first()
+    if not sermon:
+        raise HTTPException(404, "Sermon not found")
+    return {
+        "sermon_id": sermon.sermon_id,
+        "title": sermon.title,
+        "speaker": sermon.speaker,
+        "status": sermon.status,
+        "date_uploaded": sermon.date_uploaded.isoformat() if sermon.date_uploaded else None,
+        "raw_text": sermon.raw_text,
+    }
 
