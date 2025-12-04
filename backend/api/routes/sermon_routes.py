@@ -419,7 +419,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     
     # Count segments
     total_segments = db.query(models.Segment).count()
-    vetted_segments = db.query(models.Segment).filter(models.Segment.is_vetted == True).count()
+    vetted_segments = db.query(models.Segment).filter(models.Segment.is_vetted).count()
     
     # Count sermons by status
     pending_review = db.query(models.Sermon).filter(
