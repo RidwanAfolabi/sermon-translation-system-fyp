@@ -196,7 +196,6 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
       const sermons = await sermonApi.list();
       setAllSermons(sermons);
       
-      // If no sermon selected but we have vetted sermons, suggest the first one
       if (!selectedSermonId && sermons.length > 0) {
         // Don't auto-select, just load the list
       }
