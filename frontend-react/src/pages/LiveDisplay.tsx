@@ -132,7 +132,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
     }
   };
 
-  const showSelector = manualSelector || noControlRoom;
+  const showSelector = showManualSelector || noControlRoom;
 
   // Display settings
   const historyDisplayCount = 5;
@@ -169,7 +169,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
               
               {!noControlRoom && (
                 <button
-                  onClick={() => setManualSelector(false)}
+                  onClick={() => setShowManualSelector(false)}
                   className="w-full px-6 py-3 bg-white/10 text-white font-semibold rounded-lg hover:bg-white/20 transition-colors"
                 >
                   Close
@@ -207,7 +207,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
           </div>
 
           <button
-            onClick={() => setManualSelector(true)}
+            onClick={() => setShowManualSelector(true)}
             className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
           >
             <Settings size={14} />
