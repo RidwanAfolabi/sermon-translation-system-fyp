@@ -269,3 +269,4 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
     </div>
   );
 }
+ // If opened in new tab, navigate directly
