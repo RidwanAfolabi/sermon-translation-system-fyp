@@ -25,6 +25,8 @@ export function SermonLibrary({ onNavigate }: SermonLibraryProps) {
   const [deleting, setDeleting] = useState<number | null>(null);
   const [translating, setTranslating] = useState<number | null>(null);
   const [exporting, setExporting] = useState<number | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null);
 
   useEffect(() => {
     loadSermons();
@@ -70,12 +72,16 @@ export function SermonLibrary({ onNavigate }: SermonLibraryProps) {
     }
   };
 
-  const handleDelete = async (sermonId: number, title: string) => {
-    if (!confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) {
-      return;
-    }
-    
+  const requestDelete = (sermonId: number, title: string) => {
+    setDeleteTarget({ id: sermonId, title });
+    setConfirmDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    const sermonId = deleteTarget.id;
     setDeleting(sermonId);
+    setConfirmDeleteOpen(false);
     try {
       await sermonApi.delete(sermonId);
       toast.success('Sermon deleted successfully');
@@ -85,6 +91,7 @@ export function SermonLibrary({ onNavigate }: SermonLibraryProps) {
       toast.error('Failed to delete sermon');
     } finally {
       setDeleting(null);
+      setDeleteTarget(null);
     }
   };
 
@@ -300,7 +307,7 @@ export function SermonLibrary({ onNavigate }: SermonLibraryProps) {
                           size="sm"
                           icon={deleting === sermon.sermon_id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                           className="text-[#dc3545] hover:bg-[#dc3545]/10"
-                          onClick={() => handleDelete(sermon.sermon_id, sermon.title)}
+                          onClick={() => requestDelete(sermon.sermon_id, sermon.title)}
                           disabled={deleting === sermon.sermon_id}
                         >
                           Delete
@@ -321,6 +328,33 @@ export function SermonLibrary({ onNavigate }: SermonLibraryProps) {
           </>
         )}
       </div>
+
+      {confirmDeleteOpen && deleteTarget && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <Card className="w-[90vw] sm:w-[520px] max-w-xl p-6 shadow-2xl border border-gray-200">
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">Delete sermon</h3>
+            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+              Are you sure you want to delete "{deleteTarget.title}"? This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => { setConfirmDeleteOpen(false); setDeleteTarget(null); }}
+                disabled={deleting === deleteTarget.id}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmDelete}
+                disabled={deleting === deleteTarget.id}
+                className="bg-[#dc3545] hover:bg-[#c82333] text-white"
+              >
+                {deleting === deleteTarget.id ? 'Deleting…' : 'Delete'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
