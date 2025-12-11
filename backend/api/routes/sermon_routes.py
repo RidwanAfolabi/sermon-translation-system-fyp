@@ -428,7 +428,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         db.query(
             models.Segment.sermon_id,
             func.count().label("total"),
-            func.sum(case((models.Segment.is_vetted == True, 1), else_=0)).label("vetted"),
+            func.sum(case((models.Segment.is_vetted.is_(True), 1), else_=0)).label("vetted"),
         )
         .group_by(models.Segment.sermon_id)
         .all()
