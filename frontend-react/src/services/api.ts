@@ -120,20 +120,6 @@ export const sermonApi = {
     return response.data;
   },
 
-  // Bulk vet segments (new endpoint)
-  vetSegmentsBulk: async (
-    segments: { segment_id: number; english_text?: string }[],
-    reviewer: string,
-    updateText: boolean = false
-  ): Promise<{ status: string; count: number; segment_ids: number[] }> => {
-    const response = await api.post('/translation/vet_segments_bulk', {
-      segments,
-      reviewer,
-      update_text: updateText,
-    });
-    return response.data;
-  },
-
   // Delete a sermon
   delete: async (sermonId: number): Promise<{ ok: boolean; deleted_sermon_id: number }> => {
     const response = await api.delete(ENDPOINTS.SERMON_DELETE(sermonId));
@@ -173,31 +159,25 @@ export default api;
 
 // Helper function to compute dashboard stats from sermons and segments
 export async function getDashboardStats(): Promise<DashboardStats> {
-  // Legacy helper (unused in main dashboard now). Kept for compatibility.
   const sermons = await sermonApi.list();
   let totalSegments = 0;
   let vettedSegments = 0;
-  let pendingReview = 0;
-  let vettedReady = 0;
-
+  
+  // Get segment counts for each sermon
   for (const sermon of sermons) {
     try {
       const segments = await sermonApi.getSegments(sermon.sermon_id);
-      const total = segments.length;
-      const vetted = segments.filter(s => s.vetted).length;
-      totalSegments += total;
-      vettedSegments += vetted;
-      if (total === 0) continue;
-      if (vetted === total || sermon.status === 'vetted') {
-        vettedReady += 1;
-      } else {
-        pendingReview += 1;
-      }
+      totalSegments += segments.length;
+      vettedSegments += segments.filter(s => s.vetted).length;
     } catch {
       // Sermon might not have segments yet
-      continue;
     }
   }
+
+  const vettedReady = sermons.filter(s => s.status === 'vetted').length;
+  const pendingReview = sermons.filter(s => 
+    s.status === 'translated' || s.status === 'segmented'
+  ).length;
 
   return {
     total_sermons: sermons.length,

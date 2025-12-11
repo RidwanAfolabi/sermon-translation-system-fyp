@@ -23,8 +23,6 @@ class Segment(Base):
     english_text = Column(Text, nullable=True)
     confidence_score = Column(Float, nullable=True)
     is_vetted = Column(Boolean, default=False)
-    last_reviewed_by = Column(String(150), nullable=True)
-    last_reviewed_date = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Log(Base):
