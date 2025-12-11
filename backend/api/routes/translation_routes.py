@@ -131,7 +131,7 @@ def vet_segments_bulk(
     update_text = bool(payload.get("update_text", False))
 
     if not reviewer:
-        raise HTTPException(status_code=400, detail="Reviewer is required")
+        raise HTTPException(status_code=400, detail="Reviewer name is required")
     if not segments_payload:
         raise HTTPException(status_code=400, detail="No segments provided")
 
