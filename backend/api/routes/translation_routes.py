@@ -11,7 +11,7 @@ import logging
 from typing import List
 from datetime import datetime  # added this
 
-from fastapi import APIRouter, Form, Depends, HTTPException
+from fastapi import APIRouter, Form, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 
 from backend.db.session import SessionLocal
@@ -99,4 +99,88 @@ def vet_segment(
         "segment_id": segment_id,
         "reviewer": reviewer,
         "reviewed_at": seg.last_reviewed_date,
+    }
+
+
+# -------------------------------------------------------------------
+# Bulk Vetting Endpoint
+# -------------------------------------------------------------------
+# Keep both prefixed and unprefixed routes for compatibility with frontend calls.
+@router.post("/translation/vet_segments_bulk")
+@router.post("/vet_segments_bulk")
+def vet_segments_bulk(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Bulk vet multiple segments at once.
+
+    Expected payload:
+    {
+      "segments": [
+         {"segment_id": 123, "english_text": "optional override"},
+         ...
+      ],
+      "reviewer": "Reviewer Name",
+      "update_text": false  # if true, english_text overrides existing text
+    }
+    """
+
+    segments_payload = payload.get("segments") or []
+    reviewer = payload.get("reviewer")
+    update_text = bool(payload.get("update_text", False))
+
+    if not reviewer:
+        raise HTTPException(status_code=400, detail="Reviewer name is required")
+    if not segments_payload:
+        raise HTTPException(status_code=400, detail="No segments provided")
+
+    updated_ids = []
+    touched_sermon_ids = set()
+
+    try:
+        for item in segments_payload:
+            seg_id = item.get("segment_id")
+            if not seg_id:
+                continue
+            seg = db.query(models.Segment).filter(models.Segment.segment_id == seg_id).first()
+            if not seg:
+                continue
+
+            text_override = item.get("english_text")
+            if update_text and text_override is not None:
+                seg.english_text = text_override
+
+            # Ensure we do not vet empty translations
+            if not seg.english_text:
+                continue
+
+            seg.is_vetted = True
+            seg.last_reviewed_by = reviewer
+            seg.last_reviewed_date = datetime.utcnow()
+            touched_sermon_ids.add(seg.sermon_id)
+            updated_ids.append(seg.segment_id)
+
+        # If all segments for a sermon are vetted, mark the sermon as vetted for dashboard accuracy.
+        for sermon_id in touched_sermon_ids:
+            remaining = db.query(models.Segment).filter(
+                models.Segment.sermon_id == sermon_id,
+                models.Segment.is_vetted == False,
+            ).count()
+            if remaining == 0:
+                sermon_row = db.query(models.Sermon).filter(models.Sermon.sermon_id == sermon_id).first()
+                if sermon_row:
+                    sermon_row.status = "vetted"
+
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.exception("Error during bulk vetting operation")
+        raise HTTPException(status_code=500, detail="Bulk vetting failed due to a server error.")
+
+    return {
+        "status": "vetted",
+        "count": len(updated_ids),
+        "segment_ids": updated_ids,
+        "reviewer": reviewer,
     }

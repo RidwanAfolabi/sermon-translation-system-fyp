@@ -24,6 +24,9 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
   const [editedText, setEditedText] = useState('');
   const [savingSegment, setSavingSegment] = useState<number | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'marian'>('gemini');
+  const [confirmBulkOpen, setConfirmBulkOpen] = useState(false);
+  const [bulkCount, setBulkCount] = useState(0);
+  const reviewerName = user?.name || 'Reviewer';
 
   useEffect(() => {
     if (sermonId) {
@@ -144,6 +147,40 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
     }
   };
 
+  const handleApproveAllTranslated = () => {
+    if (!sermonId) return;
+    const targets = segments.filter(s => s.english_text && !s.vetted).map(s => ({ segment_id: s.segment_id }));
+    if (targets.length === 0) {
+      toast.info('No translated segments to approve.');
+      return;
+    }
+
+    setBulkCount(targets.length);
+    setConfirmBulkOpen(true);
+  };
+
+  const confirmApproveAllTranslated = async () => {
+    if (!sermonId) return;
+    const targets = segments.filter(s => s.english_text && !s.vetted).map(s => ({ segment_id: s.segment_id }));
+    if (targets.length === 0) {
+      setConfirmBulkOpen(false);
+      return;
+    }
+
+    setSavingSegment(-1);
+    setConfirmBulkOpen(false);
+    try {
+      const result = await sermonApi.vetSegmentsBulk(targets, reviewerName, false);
+      toast.success(`Approved ${result.count} segments`);
+      loadSermonData();
+    } catch (err) {
+      console.error('Bulk approve failed:', err);
+      toast.error('Bulk approve failed');
+    } finally {
+      setSavingSegment(null);
+    }
+  };
+
   const getStatusIcon = (segment: Segment) => {
     if (segment.vetted) return <Check size={16} className="text-[#28a745]" />;
     if (segment.english_text) return <Clock size={16} className="text-[#ffc107]" />;
@@ -210,6 +247,13 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
                   disabled={translating}
                 >
                   Translate Empty Only
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleApproveAllTranslated}
+                  disabled={savingSegment === -1}
+                >
+                  {savingSegment === -1 ? 'Approving…' : 'Approve All Translated'}
                 </Button>
                 <Button 
                   variant="secondary" 
@@ -356,6 +400,29 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
           </div>
         </div>
       </div>
+
+        {confirmBulkOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+            <Card className="w-[90vw] sm:w-[520px] max-w-xl p-6 shadow-2xl border border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Approve translations</h3>
+              <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                Approve {bulkCount} translated segment{bulkCount === 1 ? '' : 's'}? This will mark them as vetted.
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setConfirmBulkOpen(false)}
+                  disabled={savingSegment === -1}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={confirmApproveAllTranslated} disabled={savingSegment === -1}>
+                  {savingSegment === -1 ? 'Approving…' : 'Approve All'}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
     </div>
   );
 }
