@@ -138,40 +138,45 @@ def vet_segments_bulk(
     updated_ids = []
     touched_sermon_ids = set()
 
-    for item in segments_payload:
-        seg_id = item.get("segment_id")
-        if not seg_id:
-            continue
-        seg = db.query(models.Segment).filter(models.Segment.segment_id == seg_id).first()
-        if not seg:
-            continue
+    try:
+        for item in segments_payload:
+            seg_id = item.get("segment_id")
+            if not seg_id:
+                continue
+            seg = db.query(models.Segment).filter(models.Segment.segment_id == seg_id).first()
+            if not seg:
+                continue
 
-        text_override = item.get("english_text")
-        if update_text and text_override is not None:
-            seg.english_text = text_override
+            text_override = item.get("english_text")
+            if update_text and text_override is not None:
+                seg.english_text = text_override
 
-        # Ensure we do not vet empty translations
-        if not seg.english_text:
-            continue
+            # Ensure we do not vet empty translations
+            if not seg.english_text:
+                continue
 
-        seg.is_vetted = True
-        seg.last_reviewed_by = reviewer
-        seg.last_reviewed_date = datetime.utcnow()
-        touched_sermon_ids.add(seg.sermon_id)
-        updated_ids.append(seg.segment_id)
+            seg.is_vetted = True
+            seg.last_reviewed_by = reviewer
+            seg.last_reviewed_date = datetime.utcnow()
+            touched_sermon_ids.add(seg.sermon_id)
+            updated_ids.append(seg.segment_id)
 
-    # If all segments for a sermon are vetted, mark the sermon as vetted for dashboard accuracy.
-    for sermon_id in touched_sermon_ids:
-        remaining = db.query(models.Segment).filter(
-            models.Segment.sermon_id == sermon_id,
-            models.Segment.is_vetted == False,
-        ).count()
-        if remaining == 0:
-            sermon_row = db.query(models.Sermon).filter(models.Sermon.sermon_id == sermon_id).first()
-            if sermon_row:
-                sermon_row.status = "vetted"
+        # If all segments for a sermon are vetted, mark the sermon as vetted for dashboard accuracy.
+        for sermon_id in touched_sermon_ids:
+            remaining = db.query(models.Segment).filter(
+                models.Segment.sermon_id == sermon_id,
+                models.Segment.is_vetted == False,
+            ).count()
+            if remaining == 0:
+                sermon_row = db.query(models.Sermon).filter(models.Sermon.sermon_id == sermon_id).first()
+                if sermon_row:
+                    sermon_row.status = "vetted"
 
-    db.commit()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.exception("Error during bulk vetting operation")
+        raise HTTPException(status_code=500, detail="Bulk vetting failed due to a server error.")
 
     return {
         "status": "vetted",
