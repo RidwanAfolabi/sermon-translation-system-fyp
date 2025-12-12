@@ -48,7 +48,7 @@ SEMANTIC_ENABLED = False
 BUFFER_MAX_CHUNKS = int(os.getenv("LIVE_BUFFER_CHUNKS", "4"))
 BUFFER_MAX_CHARS = int(os.getenv("LIVE_BUFFER_CHARS", "300"))
 LOOKAHEAD_LIMIT = int(os.getenv("LIVE_LOOKAHEAD_LIMIT", "30"))
-STATIC_THRESHOLD = float(os.getenv("LIVE_THRESHOLD", "0.45"))  # Static threshold
+STATIC_THRESHOLD = float(os.getenv("LIVE_INITIAL_THRESHOLD", "0.45"))  # Static threshold
 
 
 # ---------------------------------------------------------
