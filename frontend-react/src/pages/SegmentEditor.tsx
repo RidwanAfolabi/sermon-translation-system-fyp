@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Globe, Download, ChevronLeft, ChevronRight, Check, Clock, RefreshCw, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Globe, Download, Check, Clock, RefreshCw, Loader2, Save, ChevronDown } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -26,6 +26,8 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
   const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'marian'>('gemini');
   const [confirmBulkOpen, setConfirmBulkOpen] = useState(false);
   const [bulkCount, setBulkCount] = useState(0);
+  const [selectedSegments, setSelectedSegments] = useState<Set<number>>(new Set());
+  const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
   const reviewerName = user?.name || 'Reviewer';
 
   useEffect(() => {
@@ -33,6 +35,18 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
       loadSermonData();
     }
   }, [sermonId]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (bulkActionsOpen && !target.closest('.bulk-actions-dropdown')) {
+        setBulkActionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [bulkActionsOpen]);
 
   const loadSermonData = async () => {
     if (!sermonId) return;
@@ -159,9 +173,53 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
     setConfirmBulkOpen(true);
   };
 
+  // Toggle individual segment selection
+  const handleToggleSegment = (segmentId: number) => {
+    setSelectedSegments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(segmentId)) {
+        newSet.delete(segmentId);
+      } else {
+        newSet.add(segmentId);
+      }
+      return newSet;
+    });
+  };
+
+  // Select all / deselect all segments
+  const handleSelectAll = () => {
+    const selectableSegments = segments.filter(s => s.english_text && !s.vetted);
+    if (selectedSegments.size === selectableSegments.length && selectableSegments.length > 0) {
+      // Deselect all
+      setSelectedSegments(new Set());
+    } else {
+      // Select all translated but not vetted
+      setSelectedSegments(new Set(selectableSegments.map(s => s.segment_id)));
+    }
+  };
+
+  // Approve only selected segments
+  const handleApproveSelected = () => {
+    if (selectedSegments.size === 0) {
+      toast.info('No segments selected.');
+      return;
+    }
+    setBulkCount(selectedSegments.size);
+    setConfirmBulkOpen(true);
+    setBulkActionsOpen(false);
+  };
+
   const confirmApproveAllTranslated = async () => {
     if (!sermonId) return;
-    const targets = segments.filter(s => s.english_text && !s.vetted).map(s => ({ segment_id: s.segment_id }));
+    
+    // Use selected segments if any, otherwise fall back to all translated
+    let targets: { segment_id: number }[];
+    if (selectedSegments.size > 0) {
+      targets = Array.from(selectedSegments).map(id => ({ segment_id: id }));
+    } else {
+      targets = segments.filter(s => s.english_text && !s.vetted).map(s => ({ segment_id: s.segment_id }));
+    }
+    
     if (targets.length === 0) {
       setConfirmBulkOpen(false);
       return;
@@ -172,6 +230,7 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
     try {
       const result = await sermonApi.vetSegmentsBulk(targets, reviewerName, false);
       toast.success(`Approved ${result.count} segments`);
+      setSelectedSegments(new Set()); // Clear selection after approval
       loadSermonData();
     } catch (err) {
       console.error('Bulk approve failed:', err);
@@ -234,6 +293,44 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
           <Card className="mb-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
+                {/* Bulk Actions Dropdown */}
+                <div className="relative bulk-actions-dropdown">
+                  <Button
+                    variant="secondary"
+                    icon={<ChevronDown size={18} />}
+                    onClick={() => setBulkActionsOpen(!bulkActionsOpen)}
+                    disabled={savingSegment === -1}
+                    className="min-w-[140px] justify-between"
+                  >
+                    Bulk Actions {selectedSegments.size > 0 && `(${selectedSegments.size})`}
+                  </Button>
+                  {bulkActionsOpen && (
+                    <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                      <button
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 rounded-t-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={handleApproveSelected}
+                        disabled={selectedSegments.size === 0}
+                      >
+                        <Check size={16} className="text-[#28a745]" />
+                        Approve Selected
+                      </button>
+                      <button
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                        onClick={handleApproveAllTranslated}
+                      >
+                        <Check size={16} className="text-[#0d7377]" />
+                        Approve All Translated
+                      </button>
+                      <button
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 rounded-b-lg flex items-center gap-2"
+                        onClick={() => { setSelectedSegments(new Set()); setBulkActionsOpen(false); }}
+                      >
+                        <RefreshCw size={16} className="text-[#6c757d]" />
+                        Clear Selection
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <Button 
                   icon={translating ? <Loader2 size={18} className="animate-spin" /> : <Globe size={18} />}
                   onClick={handleTranslateAll}
@@ -247,13 +344,6 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
                   disabled={translating}
                 >
                   Translate Empty Only
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={handleApproveAllTranslated}
-                  disabled={savingSegment === -1}
-                >
-                  {savingSegment === -1 ? 'Approving…' : 'Approve All Translated'}
                 </Button>
                 <Button 
                   variant="secondary" 
@@ -292,6 +382,15 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b-2 border-gray-200">
+                      <th className="text-left py-3 px-4 font-semibold text-sm w-12">
+                        <input
+                          type="checkbox"
+                          checked={selectedSegments.size > 0 && selectedSegments.size === segments.filter(s => s.english_text && !s.vetted).length}
+                          onChange={handleSelectAll}
+                          className="w-4 h-4 text-[#0d7377] border-gray-300 rounded focus:ring-[#0d7377] cursor-pointer"
+                          title="Select all pending segments"
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 font-semibold text-sm w-16">#</th>
                       <th className="text-left py-3 px-4 font-semibold text-sm">MALAY (Original)</th>
                       <th className="text-left py-3 px-4 font-semibold text-sm">ENGLISH (Translation)</th>
@@ -302,8 +401,20 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
                     {segments.map((segment) => (
                       <tr
                         key={segment.segment_id}
-                        className="border-b border-gray-100 hover:bg-[#f8f9fa] transition-colors"
+                        className={`border-b border-gray-100 hover:bg-[#f8f9fa] transition-colors ${selectedSegments.has(segment.segment_id) ? 'bg-[#e8f4f4]' : ''}`}
                       >
+                        <td className="py-4 px-4 align-top">
+                          {segment.english_text && !segment.vetted ? (
+                            <input
+                              type="checkbox"
+                              checked={selectedSegments.has(segment.segment_id)}
+                              onChange={() => handleToggleSegment(segment.segment_id)}
+                              className="w-4 h-4 text-[#0d7377] border-gray-300 rounded focus:ring-[#0d7377] cursor-pointer"
+                            />
+                          ) : (
+                            <span className="w-4 h-4 inline-block" />
+                          )}
+                        </td>
                         <td className="py-4 px-4 align-top">
                           <div className="flex flex-col items-center gap-2">
                             <span className="font-medium">{segment.segment_order}</span>
@@ -406,7 +517,7 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
             <Card className="w-[90vw] sm:w-[520px] max-w-xl p-6 shadow-2xl border border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Approve translations</h3>
               <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-                Approve {bulkCount} translated segment{bulkCount === 1 ? '' : 's'}? This will mark them as vetted.
+                Approve {bulkCount} {selectedSegments.size > 0 ? 'selected' : 'translated'} segment{bulkCount === 1 ? '' : 's'}? This will mark them as vetted.
               </p>
               <div className="flex justify-end gap-3">
                 <Button
@@ -417,7 +528,7 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
                   Cancel
                 </Button>
                 <Button onClick={confirmApproveAllTranslated} disabled={savingSegment === -1}>
-                  {savingSegment === -1 ? 'Approving…' : 'Approve All'}
+                  {savingSegment === -1 ? 'Approving…' : `Approve ${selectedSegments.size > 0 ? 'Selected' : 'All'}`}
                 </Button>
               </div>
             </Card>
