@@ -4,7 +4,6 @@ API endpoints for sermon management: upload, list, get sermon and segments.
 """
 
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Body, Response
-from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 from pathlib import Path
 from typing import Tuple, List, Optional
@@ -417,39 +416,20 @@ def export_sermon(sermon_id: int, format: str = "csv", db: Session = Depends(get
 def get_dashboard_stats(db: Session = Depends(get_db)):
     """Get dashboard statistics for React frontend."""
     total_sermons = db.query(models.Sermon).count()
-
-    # Segment-level counts
+    
+    # Count segments
     total_segments = db.query(models.Segment).count()
     vetted_segments = db.query(models.Segment).filter(models.Segment.is_vetted).count()
-
-    # Compute sermon readiness based on segments (more reliable than status alone)
-    # Aggregate segment vetting per sermon
-    agg_rows = (
-        db.query(
-            models.Segment.sermon_id,
-            func.count().label("total"),
-            func.sum(case((models.Segment.is_vetted.is_(True), 1), else_=0)).label("vetted"),
-        )
-        .group_by(models.Segment.sermon_id)
-        .all()
-    )
-
-    counts = {row.sermon_id: (row.total or 0, row.vetted or 0) for row in agg_rows}
-
-    pending_review = 0
-    vetted_ready = 0
-    for sermon in db.query(models.Sermon).all():
-        total, vetted = counts.get(sermon.sermon_id, (0, 0))
-        if total == 0:
-            # No segments yet; skip from pending/ready buckets
-            continue
-
-        # Treat sermon.status == 'vetted' as ready even if legacy segments weren't flagged
-        if vetted >= total or sermon.status == 'vetted':
-            vetted_ready += 1
-        else:
-            pending_review += 1
-
+    
+    # Count sermons by status
+    pending_review = db.query(models.Sermon).filter(
+        models.Sermon.status.in_(['translated', 'segmented'])
+    ).count()
+    
+    vetted_ready = db.query(models.Sermon).filter(
+        models.Sermon.status == 'vetted'
+    ).count()
+    
     return {
         "total_sermons": total_sermons,
         "pending_review": pending_review,

@@ -5,7 +5,7 @@ import { Badge } from '../components/ui/Badge';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Button } from '../components/ui/Button';
 import { Header } from '../components/layout/Header';
-import { sermonApi, Sermon, DashboardStats } from '../services/api';
+import { sermonApi, Sermon, getDashboardStats, DashboardStats } from '../services/api';
 import { toast } from 'sonner';
 
 interface DashboardProps {
@@ -72,7 +72,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       }
       
       setRecentSermons(sermonsWithProgress);
-      const dashStats = await sermonApi.getStats();
+      const dashStats = await getDashboardStats();
       setStats(dashStats);
       
     } catch (err) {

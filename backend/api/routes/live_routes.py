@@ -48,7 +48,7 @@ SEMANTIC_ENABLED = False
 BUFFER_MAX_CHUNKS = int(os.getenv("LIVE_BUFFER_CHUNKS", "4"))
 BUFFER_MAX_CHARS = int(os.getenv("LIVE_BUFFER_CHARS", "300"))
 LOOKAHEAD_LIMIT = int(os.getenv("LIVE_LOOKAHEAD_LIMIT", "30"))
-INITIAL_THRESHOLD = float(os.getenv("LIVE_INITIAL_THRESHOLD", "0.55"))
+STATIC_THRESHOLD = float(os.getenv("LIVE_INITIAL_THRESHOLD", "0.45"))  # Static threshold
 
 
 # ---------------------------------------------------------
@@ -144,8 +144,7 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
         _start_asr_thread_once()
 
         # Per-connection state
-        dynamic_thresh = INITIAL_THRESHOLD
-        miss_streak = 0
+        static_thresh = STATIC_THRESHOLD  # Use static threshold
         last_matched_order = -1
         asr_buffer_chunks: list[str] = []
 
@@ -194,32 +193,26 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
                     chosen_seg, chosen_score, chosen_id, chosen_order = \
                         best_seg_single, best_score_single, best_id_single, best_order_single
 
-                # evaluate match
+                # evaluate match (simplified - no dynamic adaptation)
                 matched = False
                 if chosen_seg and chosen_order and chosen_order > last_matched_order:
-                    if chosen_score >= dynamic_thresh:
+                    if chosen_score >= static_thresh:
                         matched = True
 
-                # adapt threshold
-                if matched:
-                    miss_streak = 0
-                    dynamic_thresh = min(0.70, dynamic_thresh + 0.02)
-                else:
-                    miss_streak += 1
-                    if miss_streak >= 3:
-                        dynamic_thresh = max(0.45, dynamic_thresh - 0.03)
+                # REMOVED: dynamic threshold adaptation
+                # Just use static threshold throughout
 
                 # payload
                 payload = {
                     "spoken": spoken,
                     "buffer_text": buffer_text,
                     "buffer_chunks": len(asr_buffer_chunks),
-                    "score": round(chosen_score or 0.0, 3),  # ✅ Fixed
+                    "score": round(chosen_score or 0.0, 3),
                     "matched": matched,
-                    "threshold": round(dynamic_thresh, 3),  # ✅ Fixed
+                    "threshold": static_thresh,  # Always same value
                     "aligner": ALIGNER_MODE,
                     "candidate": {"segment_id": chosen_id, "order": chosen_order},
-                    "segment": None  # ✅ Fixed - set to None initially
+                    "segment": None
                 }
 
                 if matched and chosen_seg:
