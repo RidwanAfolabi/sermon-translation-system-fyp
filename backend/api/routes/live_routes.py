@@ -193,14 +193,11 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
                     chosen_seg, chosen_score, chosen_id, chosen_order = \
                         best_seg_single, best_score_single, best_id_single, best_order_single
 
-                # evaluate match (simplified - no dynamic adaptation)
+                # evaluate match
                 matched = False
                 if chosen_seg and chosen_order and chosen_order > last_matched_order:
                     if chosen_score >= static_thresh:
                         matched = True
-
-                # REMOVED: dynamic threshold adaptation
-                # Just use static threshold throughout
 
                 # payload
                 payload = {
@@ -209,13 +206,32 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
                     "buffer_chunks": len(asr_buffer_chunks),
                     "score": round(chosen_score or 0.0, 3),
                     "matched": matched,
-                    "threshold": static_thresh,  # Always same value
+                    "threshold": static_thresh,
                     "aligner": ALIGNER_MODE,
                     "candidate": {"segment_id": chosen_id, "order": chosen_order},
-                    "segment": None
+                    "segment": None,
+                    "skipped_segments": []  # NEW: catch-up segments
                 }
 
                 if matched and chosen_seg:
+                    # --------------------------------------------------
+                    # NEW: Catch-up logic for skipped segments
+                    # --------------------------------------------------
+                    skipped = []
+                    if chosen_order > last_matched_order + 1:
+                        # Find all segments between last matched and current
+                        for seg in segments:
+                            if last_matched_order < seg.segment_order < chosen_order:
+                                skipped.append({
+                                    "segment_id": seg.segment_id,
+                                    "order": seg.segment_order,
+                                    "malay_text": seg.malay_text,
+                                    "english_text": seg.english_text
+                                })
+                        if skipped:
+                            logger.info(f"[LIVE] Catching up {len(skipped)} skipped segment(s): orders {[s['order'] for s in skipped]}")
+                    
+                    payload["skipped_segments"] = skipped
                     payload["segment"] = {
                         "segment_id": chosen_seg.segment_id,
                         "order": chosen_seg.segment_order,

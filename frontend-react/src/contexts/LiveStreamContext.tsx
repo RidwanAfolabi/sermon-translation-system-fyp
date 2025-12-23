@@ -28,6 +28,13 @@ export interface LiveMessage {
     english_text: string;
   } | null;
   
+  skipped_segments?: Array<{
+    segment_id: number;
+    order: number;
+    malay_text: string;
+    english_text: string;
+  }>;
+  
   // Error handling
   error?: string;
 }
@@ -45,6 +52,7 @@ interface LiveStreamState {
   totalSegments: number;
   matchScore: number;
   sessionTime: number;
+  skippedSegments: Array<{ english_text: string; order: number }>;
 }
 
 interface LiveStreamContextType extends LiveStreamState {
@@ -70,6 +78,7 @@ export function LiveStreamProvider({ children }: { children: ReactNode }) {
     totalSegments: 0,
     matchScore: 0,
     sessionTime: 0,
+    skippedSegments: [],
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -144,11 +153,25 @@ export function LiveStreamProvider({ children }: { children: ReactNode }) {
           // Handle matched segment
           if (data.matched && data.segment) {
             setState(prev => {
+              // Collect skipped segment texts
+              const skippedTexts = (data.skipped_segments || []).map(seg => ({
+                english_text: seg.english_text || seg.malay_text,
+                order: seg.order
+              }));
+              
               const newSubtitle = data.segment!.english_text || data.segment!.malay_text;
               const shouldPushCurrent = prev.currentSubtitle && prev.currentSubtitle !== 'Waiting for sermon to begin...';
-              const newPrevious = shouldPushCurrent
-                ? [prev.currentSubtitle, ...prev.previousSubtitles].slice(0, MAX_PREVIOUS_SUBTITLES)
-                : prev.previousSubtitles;
+              
+              // If there are skipped segments, add them to previous before current
+              let newPrevious = prev.previousSubtitles;
+              if (shouldPushCurrent) {
+                newPrevious = [prev.currentSubtitle, ...newPrevious];
+              }
+              // Add skipped segments to history (in order)
+              skippedTexts.forEach(skipped => {
+                newPrevious = [skipped.english_text, ...newPrevious];
+              });
+              newPrevious = newPrevious.slice(0, MAX_PREVIOUS_SUBTITLES);
 
               return {
                 ...prev,
@@ -156,6 +179,7 @@ export function LiveStreamProvider({ children }: { children: ReactNode }) {
                 currentSubtitle: newSubtitle,
                 currentSegmentId: data.segment!.segment_id,
                 segmentOrder: data.segment!.order,
+                skippedSegments: skippedTexts, // Store for broadcast
               };
             });
           }
@@ -220,6 +244,7 @@ export function LiveStreamProvider({ children }: { children: ReactNode }) {
       totalSegments: 0,
       matchScore: 0,
       sessionTime: 0,
+      skippedSegments: [],
     });
   }, []);
 

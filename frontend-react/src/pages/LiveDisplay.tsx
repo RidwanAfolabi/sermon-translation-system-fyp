@@ -26,6 +26,20 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const connectionCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Helper to display a subtitle (handles pushing to history)
+  const displaySubtitle = (text: string) => {
+    if (!text) return;
+    setCurrentSubtitle(prev => {
+      if (prev && prev !== text) {
+        setPreviousSubtitles(prevSubs => {
+          const newPrevious = [prev, ...prevSubs].slice(0, 5);
+          return newPrevious;
+        });
+      }
+      return text;
+    });
+  };
+
   // Initialize BroadcastChannel to listen for subtitles from ControlRoom
   useEffect(() => {
     if (typeof window === 'undefined' || !('BroadcastChannel' in window)) {
@@ -49,17 +63,22 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
       }
 
       if (msg?.type === 'subtitle' && msg.text) {
-        // Update current subtitle
-        setCurrentSubtitle(prev => {
-          if (prev && prev !== msg.text) {
-            // Push the old current to previous
-            setPreviousSubtitles(prevSubs => {
-              const newPrevious = [prev, ...prevSubs].slice(0, 5);
-              return newPrevious;
-            });
-          }
-          return msg.text;
-        });
+        // Handle skipped segments first (if any)
+        if (msg.skippedSegments && msg.skippedSegments.length > 0) {
+          msg.skippedSegments.forEach((skippedText: string, idx: number) => {
+            setTimeout(() => {
+              displaySubtitle(skippedText);
+            }, idx * 1500); // Stagger display
+          });
+          
+          // Then show current segment after all skipped
+          setTimeout(() => {
+            displaySubtitle(msg.text);
+          }, msg.skippedSegments.length * 1500);
+        } else {
+          // No skipped segments, display directly
+          displaySubtitle(msg.text);
+        }
 
         // Update metadata
         if (msg.order) setSegmentOrder(msg.order);
@@ -79,7 +98,6 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.sermonTitle) setSermonTitle(parsed.sermonTitle);
-        // If we have stored context, assume we're connected until proven otherwise
         if (parsed.sermonId) {
           setConnecting(true);
           setNoControlRoom(false);
@@ -95,11 +113,9 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
     });
 
     // Set a timeout to check if we receive any messages
-    // Longer timeout to allow for BroadcastChannel connection
     connectionCheckTimeoutRef.current = setTimeout(() => {
       setConnecting(false);
       setNoControlRoom(true);
-      // Only show "no control room" if we haven't received any data
     }, 5000);
 
     return () => {
@@ -127,7 +143,6 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
     if (onNavigate) {
       onNavigate('controlRoom');
     } else {
-      // If opened in new tab, navigate directly
       window.location.href = '/control-room';
     }
   };

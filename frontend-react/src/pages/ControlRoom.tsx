@@ -25,6 +25,7 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
     sermonTitle,
     currentSubtitle,
     previousSubtitles,
+    skippedSegments,
     lastASR,
     currentSegmentId,
     segmentOrder,
@@ -96,13 +97,14 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
       type: 'subtitle',
       text: currentSubtitle,
       order: segmentOrder,
+      skippedSegments: skippedSegments.map(s => s.english_text),
       previousSubtitles: previousSubtitles,
       sermonTitle: sermonTitle,
       totalSegments: totalSegments,
       sessionTime: sessionTime,
       connected: connected,
     });
-  }, [currentSubtitle, segmentOrder, previousSubtitles, sermonTitle, totalSegments, sessionTime, connected]);
+  }, [currentSubtitle, segmentOrder, skippedSegments, previousSubtitles, sermonTitle, totalSegments, sessionTime, connected]);
 
   // Broadcast connection status changes
   useEffect(() => {
