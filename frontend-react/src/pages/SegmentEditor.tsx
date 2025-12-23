@@ -6,7 +6,6 @@ import { Badge } from '../components/ui/Badge';
 import { Header } from '../components/layout/Header';
 import { sermonApi, Sermon, Segment } from '../services/api';
 import { toast } from 'sonner';
-import { useAuth } from '../context/AuthContext';
 
 interface SegmentEditorProps {
   onNavigate: (page: string, sermonId?: number) => void;
@@ -14,7 +13,6 @@ interface SegmentEditorProps {
 }
 
 export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [sermon, setSermon] = useState<Sermon | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
@@ -24,6 +22,8 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
   const [editedText, setEditedText] = useState('');
   const [savingSegment, setSavingSegment] = useState<number | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'marian'>('gemini');
+  const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
+  const [selectedSegments, setSelectedSegments] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (sermonId) {
@@ -151,6 +151,70 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
     } catch (err) {
       console.error('Failed to approve segment:', err);
       toast.error('Failed to approve segment');
+    } finally {
+      setSavingSegment(null);
+    }
+  };
+
+  const handleToggleSegment = (segmentId: number) => {
+    const newSelected = new Set(selectedSegments);
+    if (newSelected.has(segmentId)) {
+      newSelected.delete(segmentId);
+    } else {
+      newSelected.add(segmentId);
+    }
+    setSelectedSegments(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    const pendingSegments = segments.filter(s => s.english_text && !s.vetted);
+    if (selectedSegments.size === pendingSegments.length) {
+      setSelectedSegments(new Set());
+    } else {
+      setSelectedSegments(new Set(pendingSegments.map(s => s.segment_id)));
+    }
+  };
+
+  const handleApproveSelected = async () => {
+    if (selectedSegments.size === 0) return;
+    setSavingSegment(-1);
+    try {
+      await Promise.all(
+        Array.from(selectedSegments).map(segmentId =>
+          sermonApi.updateSegment(segmentId, { vetted: true })
+        )
+      );
+      toast.success(`Approved ${selectedSegments.size} segments`);
+      setSelectedSegments(new Set());
+      setBulkActionsOpen(false);
+      loadSermonData();
+    } catch (err) {
+      console.error('Failed to approve segments:', err);
+      toast.error('Failed to approve selected segments');
+    } finally {
+      setSavingSegment(null);
+    }
+  };
+
+  const handleApproveAllTranslated = async () => {
+    const translatedSegments = segments.filter(s => s.english_text && !s.vetted);
+    if (translatedSegments.length === 0) {
+      toast.info('No translated segments to approve');
+      return;
+    }
+    setSavingSegment(-1);
+    try {
+      await Promise.all(
+        translatedSegments.map(segment =>
+          sermonApi.updateSegment(segment.segment_id, { vetted: true })
+        )
+      );
+      toast.success(`Approved ${translatedSegments.length} translated segments`);
+      setBulkActionsOpen(false);
+      loadSermonData();
+    } catch (err) {
+      console.error('Failed to approve all translated segments:', err);
+      toast.error('Failed to approve translated segments');
     } finally {
       setSavingSegment(null);
     }
