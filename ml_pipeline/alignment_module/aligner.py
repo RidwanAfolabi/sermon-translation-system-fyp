@@ -104,7 +104,7 @@ def similarity(spoken: str, cand: str) -> float:
 # -------------------------------
 # Main Matching
 # -------------------------------
-def match_spoken_to_segment(spoken_text: str, segments, min_score: float = 0.55):
+def match_spoken_to_segment(spoken_text: str, segments, min_score: float = 0.45):
     if not spoken_text or not segments:
         return None, 0.0, None, None
 
