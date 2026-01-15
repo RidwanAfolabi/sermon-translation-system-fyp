@@ -1,4 +1,4 @@
-import { BarChart3, FileText, Upload, Edit3, RefreshCw, Radio, Settings, HelpCircle, Home, ChevronLeft, CheckCircle, LogOut } from 'lucide-react';
+import { BarChart3, FileText, Upload, RefreshCw, Radio, Settings, HelpCircle, Home, ChevronLeft, CheckCircle, LogOut } from 'lucide-react';
 import { MosqueLogo } from '../IslamicPattern';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -16,7 +16,6 @@ export function Sidebar({ activeItem, onItemClick }: SidebarProps) {
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'upload', label: 'Upload Sermon', icon: Upload },
     { id: 'library', label: 'Sermon Library', icon: FileText },
-    { id: 'segments', label: 'Segments', icon: Edit3 },
     { id: 'vetting', label: 'Vetting Queue', icon: CheckCircle },
     { id: 'translation', label: 'Translation', icon: RefreshCw },
     { id: 'live', label: 'Live Control', icon: Radio },

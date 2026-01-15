@@ -239,13 +239,9 @@ function ProtectedApp() {
       <Route
         path="/vetting"
         element={(
-          <TopNavShell
-            currentPage={currentPage}
-            onNavigate={handleNavigate}
-            title="Vetting Dashboard"
-          >
+          <SidebarShell currentPage={currentPage} onNavigate={handleNavigate}>
             <VettingQueue onNavigate={handleNavigate} />
-          </TopNavShell>
+          </SidebarShell>
         )}
       />
       <Route
