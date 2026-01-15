@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Globe, Download, ChevronLeft, ChevronRight, Check, Clock, RefreshCw, Loader2, Save } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Globe, Download, Check, Clock, RefreshCw, Loader2, Save, ChevronDown } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -24,6 +24,7 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
   const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'marian'>('gemini');
   const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
   const [selectedSegments, setSelectedSegments] = useState<Set<number>>(new Set());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (sermonId) {
@@ -31,9 +32,15 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
     }
   }, [sermonId]);
 
-  const loadSermonData = async () => {
+  const loadSermonData = async (preserveScroll = false) => {
     if (!sermonId) return;
-    setLoading(true);
+    
+    // Save scroll position before reload
+    const scrollPosition = preserveScroll && scrollContainerRef.current 
+      ? scrollContainerRef.current.scrollTop 
+      : 0;
+    
+    setLoading(!preserveScroll); // Don't show loading spinner on preserve scroll
     try {
       const [sermonsData, segmentsData] = await Promise.all([
         sermonApi.list(),
@@ -43,6 +50,15 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
       const foundSermon = sermonsData.find(s => s.sermon_id === sermonId);
       setSermon(foundSermon || null);
       setSegments(segmentsData);
+      
+      // Restore scroll position after state update
+      if (preserveScroll && scrollContainerRef.current) {
+        requestAnimationFrame(() => {
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollPosition;
+          }
+        });
+      }
     } catch (err) {
       console.error('Failed to load sermon:', err);
       toast.error('Failed to load sermon data');
@@ -118,7 +134,7 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
       });
       toast.success('Segment saved and marked as vetted');
       setEditingSegment(null);
-      loadSermonData();
+      loadSermonData(true); // Preserve scroll position
     } catch (err) {
       console.error('Failed to save segment:', err);
       toast.error('Failed to save segment');
@@ -135,7 +151,7 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
         vetted: true,
       });
       toast.success('Segment approved');
-      loadSermonData();
+      loadSermonData(true); // Preserve scroll position
     } catch (err) {
       console.error('Failed to approve segment:', err);
       toast.error('Failed to approve segment');
@@ -175,7 +191,7 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
       toast.success(`Approved ${selectedSegments.size} segments`);
       setSelectedSegments(new Set());
       setBulkActionsOpen(false);
-      loadSermonData();
+      loadSermonData(true); // Preserve scroll position
     } catch (err) {
       console.error('Failed to approve segments:', err);
       toast.error('Failed to approve selected segments');
@@ -246,7 +262,7 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
         subtitle={`${sermon.speaker || 'Unknown speaker'} • ${segments.length} segments • ${vettedPercent}% vetted`}
       />
       
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-8" ref={scrollContainerRef}>
         <div className="max-w-6xl mx-auto">
           <Button
             variant="ghost"
@@ -308,34 +324,99 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
                 </Button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b-2 border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-sm w-16">#</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm">MALAY (Original)</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm">ENGLISH (Translation)</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm w-32">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {segments.map((segment) => (
-                      <tr
-                        key={segment.segment_id}
-                        className="border-b border-gray-100 hover:bg-[#f8f9fa] transition-colors"
+              <>
+                {/* Bulk Actions Bar */}
+                <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <Button
+                        variant="secondary"
+                        icon={<ChevronDown size={16} />}
+                        onClick={() => setBulkActionsOpen(!bulkActionsOpen)}
+                        disabled={savingSegment === -1}
                       >
-                        <td className="py-4 px-4 align-top">
-                          <div className="flex flex-col items-center gap-2">
-                            <span className="font-medium">{segment.segment_order}</span>
-                            {getStatusIcon(segment)}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 align-top">
-                          <p className="text-[#212529] mb-0 leading-relaxed">
-                            {segment.malay_text}
-                          </p>
-                        </td>
-                        <td className="py-4 px-4 align-top">
+                        Bulk Actions
+                      </Button>
+                      {bulkActionsOpen && (
+                        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[180px]">
+                          <button
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={handleApproveSelected}
+                            disabled={selectedSegments.size === 0}
+                          >
+                            Approve Selected ({selectedSegments.size})
+                          </button>
+                          <button
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                            onClick={handleApproveAllTranslated}
+                          >
+                            Approve All Translated
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {selectedSegments.size > 0 && (
+                      <span className="text-sm text-[#0d7377] font-medium">
+                        {selectedSegments.size} segment{selectedSegments.size > 1 ? 's' : ''} selected
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-[#6c757d]">
+                    {segments.filter(s => s.english_text && !s.vetted).length} pending review
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b-2 border-gray-200">
+                        <th className="text-left py-3 px-4 font-semibold text-sm w-12">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-gray-300 text-[#0d7377] focus:ring-[#0d7377] cursor-pointer"
+                            checked={selectedSegments.size > 0 && selectedSegments.size === segments.filter(s => s.english_text && !s.vetted).length}
+                            onChange={handleSelectAll}
+                            title="Select all pending segments"
+                          />
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold text-sm w-16">#</th>
+                        <th className="text-left py-3 px-4 font-semibold text-sm">MALAY (Original)</th>
+                        <th className="text-left py-3 px-4 font-semibold text-sm">ENGLISH (Translation)</th>
+                        <th className="text-left py-3 px-4 font-semibold text-sm w-32">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {segments.map((segment) => (
+                        <tr
+                          key={segment.segment_id}
+                          className={`border-b border-gray-100 hover:bg-[#f8f9fa] transition-colors ${
+                            selectedSegments.has(segment.segment_id) ? 'bg-[#0d7377]/5' : ''
+                          }`}
+                        >
+                          <td className="py-4 px-4 align-top">
+                            {segment.english_text && !segment.vetted ? (
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 rounded border-gray-300 text-[#0d7377] focus:ring-[#0d7377] cursor-pointer"
+                                checked={selectedSegments.has(segment.segment_id)}
+                                onChange={() => handleToggleSegment(segment.segment_id)}
+                              />
+                            ) : (
+                              <div className="w-4 h-4" /> // Placeholder for alignment
+                            )}
+                          </td>
+                          <td className="py-4 px-4 align-top">
+                            <div className="flex flex-col items-center gap-2">
+                              <span className="font-medium">{segment.segment_order}</span>
+                              {getStatusIcon(segment)}
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 align-top">
+                            <p className="text-[#212529] mb-0 leading-relaxed">
+                              {segment.malay_text}
+                            </p>
+                          </td>
+                          <td className="py-4 px-4 align-top">
                           {editingSegment === segment.segment_id ? (
                             <div>
                               <textarea
@@ -407,6 +488,7 @@ export function SegmentEditor({ onNavigate, sermonId }: SegmentEditorProps) {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </Card>
 
