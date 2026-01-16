@@ -47,6 +47,7 @@ _model: Optional[WhisperModel] = None
 
 _stop_flag = threading.Event()
 _last_text = ""
+_stream: Optional[sd.InputStream] = None
 
 
 # -------------------------------------------------
@@ -101,6 +102,14 @@ def _sd_callback(indata, frames, time_info, status):
 def stop_listener():
     """Stop the listener safely and clear old audio blocks."""
     _stop_flag.set()
+    try:
+        global _stream
+        if _stream is not None:
+            _stream.stop()
+            _stream.close()
+            _stream = None
+    except Exception:
+        pass
     while not _audio_q.empty():
         try:
             _audio_q.get_nowait()
@@ -113,7 +122,7 @@ def stop_listener():
 # -------------------------------------------------
 def listen_and_transcribe() -> Generator[str, None, None]:
     """Main streaming ASR generator — yields text in realtime."""
-    global _last_text
+    global _last_text, _stream
     _stop_flag.clear()
 
     model = _load_model()
@@ -124,13 +133,16 @@ def listen_and_transcribe() -> Generator[str, None, None]:
     target_samples = int(SAMPLE_RATE * BLOCK_SECONDS)
     buf = np.zeros((0, 1), dtype=np.float32)
 
-    with sd.InputStream(
+    _stream = sd.InputStream(
         samplerate=SAMPLE_RATE,
         channels=CHANNELS,
         dtype="float32",
         callback=_sd_callback,
         blocksize=int(SAMPLE_RATE * 0.4)
-    ):
+    )
+    _stream.start()
+
+    try:
         while not _stop_flag.is_set():
             try:
                 data = _audio_q.get(timeout=0.5)
@@ -178,6 +190,13 @@ def listen_and_transcribe() -> Generator[str, None, None]:
             except Exception as e:
                 logging.error(f"[ASR] Error: {e}")
                 continue
+    finally:
+        try:
+            _stream.stop()
+            _stream.close()
+        except Exception:
+            pass
+        _stream = None
 
 
 # -------------------------------------------------
