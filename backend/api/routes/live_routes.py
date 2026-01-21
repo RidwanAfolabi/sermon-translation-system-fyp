@@ -21,7 +21,7 @@ from backend.db.session import SessionLocal
 from backend.db import models
 from ml_pipeline.speech_recognition.whisper_listener import listen_and_transcribe, stop_listener
 from ml_pipeline.alignment_module.aligner import match_spoken_to_segment
-from starlette.websockets import WebSocketState
+from starlette.websockets import WebSocketState, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,6 +32,7 @@ router = APIRouter()
 _text_q: "queue.Queue[str]" = queue.Queue(maxsize=64)
 _asr_thread: threading.Thread | None = None
 _asr_thread_lock = threading.Lock()
+_shutdown_flag = threading.Event()  # NEW: signal shutdown
 
 # ---------------------------------------------------------
 # NEW — Multi-client tracking
@@ -56,17 +57,24 @@ STATIC_THRESHOLD = float(os.getenv("LIVE_INITIAL_THRESHOLD", "0.45"))  # Static 
 # ---------------------------------------------------------
 def _asr_worker():
     logger.info("[LIVE] ASR worker started.")
-    for txt in listen_and_transcribe():
-        try:
-            _text_q.put_nowait(txt)
-        except queue.Full:
-            logger.debug("[LIVE] ASR queue full; dropping chunk.")
+    try:
+        for txt in listen_and_transcribe():
+            if _shutdown_flag.is_set():
+                break
+            try:
+                _text_q.put_nowait(txt)
+            except queue.Full:
+                logger.debug("[LIVE] ASR queue full; dropping chunk.")
+    except Exception as e:
+        if not _shutdown_flag.is_set():
+            logger.error(f"[LIVE] ASR worker error: {e}")
     logger.info("[LIVE] ASR worker stopped.")
 
 
 def _start_asr_thread_once():
     global _asr_thread
     with _asr_thread_lock:
+        _shutdown_flag.clear()  # Reset shutdown flag
         if _asr_thread is None or not _asr_thread.is_alive():
             _asr_thread = threading.Thread(target=_asr_worker, daemon=True)
             _asr_thread.start()
@@ -81,12 +89,21 @@ def _is_open(ws: WebSocket) -> bool:
 
 
 async def _safe_send_json(ws: WebSocket, payload):
+    """Send JSON to websocket, silently handling disconnects."""
     if not _is_open(ws):
-        return
+        return False
     try:
         await ws.send_json(payload)
+        return True
+    except (WebSocketDisconnect, asyncio.CancelledError):
+        # Expected during shutdown or client disconnect
+        return False
     except Exception as e:
-        logger.warning(f"[LIVE] websocket send_json failed: {e}", exc_info=True)
+        # Only log truly unexpected errors
+        err_str = str(e).lower()
+        if "disconnect" not in err_str and "closed" not in err_str and "cancelled" not in err_str:
+            logger.warning(f"[LIVE] websocket send failed: {e}")
+        return False
 
 
 # ---------------------------------------------------------
@@ -94,20 +111,15 @@ async def _safe_send_json(ws: WebSocket, payload):
 # ---------------------------------------------------------
 @router.websocket("/stream")
 async def live_stream(websocket: WebSocket, sermon_id: int):
-    # declare global before any modification to avoid SyntaxError
     global _connected_clients
 
-    # Accept (custom CORS headers here are unnecessary for WS; remove headers arg)
     await websocket.accept()
-    # -----------------------------------------------------
-    # Register client
-    # -----------------------------------------------------
+    
     with _connected_clients_lock:
         _connected_clients += 1
         active = _connected_clients
     logger.info(f"[LIVE] client connected — total={active}")
 
-    # Database session
     db: Session = SessionLocal()
 
     try:
@@ -120,7 +132,6 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
             await websocket.close()
             return
 
-        # Load segments
         segments = db.query(models.Segment).filter(
             models.Segment.sermon_id == sermon_id,
             models.Segment.is_vetted == True,
@@ -132,7 +143,6 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
                 models.Segment.sermon_id == sermon_id
             ).order_by(models.Segment.segment_order.asc()).all()
 
-        # Send handshake
         await _safe_send_json(websocket, {
             "status": "started",
             "sermon_id": sermon_id,
@@ -140,11 +150,9 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
             "aligner": ALIGNER_MODE
         })
 
-        # Start ASR engine (global)
         _start_asr_thread_once()
 
-        # Per-connection state
-        static_thresh = STATIC_THRESHOLD  # Use static threshold
+        static_thresh = STATIC_THRESHOLD
         last_matched_order = -1
         asr_buffer_chunks: list[str] = []
 
@@ -153,7 +161,15 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
         # -----------------------------------------------------
         while True:
             try:
-                spoken = await asyncio.get_event_loop().run_in_executor(None, _text_q.get)
+                spoken = await asyncio.get_event_loop().run_in_executor(None, _get_from_queue_with_timeout)
+                if spoken is None:
+                    # Timeout — check if we should exit
+                    if not _is_open(websocket):
+                        break
+                    continue
+            except asyncio.CancelledError:
+                logger.info("[LIVE] ASR loop cancelled (shutdown).")
+                break
             except Exception as e:
                 logger.error(f"[LIVE] queue error: {e}")
                 break
@@ -246,12 +262,19 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
                     logger.info("[LIVE] client disconnected (loop break).")
                     break
 
-                await _safe_send_json(websocket, payload)
+                if not await _safe_send_json(websocket, payload):
+                    # Send failed, client likely disconnected
+                    break
 
+            except asyncio.CancelledError:
+                logger.info("[LIVE] send loop cancelled (shutdown).")
+                break
             except Exception as e:
                 logger.error(f"[LIVE] send loop error: {e}", exc_info=True)
                 break
 
+    except asyncio.CancelledError:
+        logger.info("[LIVE] websocket handler cancelled (shutdown).")
     finally:
         # -----------------------------------------------------
         # CLEANUP — MULTI-CLIENT SAFE
@@ -262,9 +285,9 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
             remaining = _connected_clients
         logger.info(f"[LIVE] client disconnected — remaining_clients={remaining}")
 
-        # Only stop ASR when no clients remain
         if remaining <= 0:
             try:
+                _shutdown_flag.set()  # Signal ASR thread to stop
                 stop_listener()
                 logger.info("[LIVE] stop_listener() called (no clients remain).")
             except Exception as e:
@@ -272,3 +295,10 @@ async def live_stream(websocket: WebSocket, sermon_id: int):
 
         # Close database session
         db.close()
+
+def _get_from_queue_with_timeout():
+    """Helper to get from queue with timeout (for use with run_in_executor)."""
+    try:
+        return _text_q.get(block=True, timeout=1.0)
+    except queue.Empty:
+        return None
