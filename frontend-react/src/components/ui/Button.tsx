@@ -16,14 +16,14 @@ export function Button({
   disabled,
   ...props 
 }: ButtonProps) {
-  const baseStyles = 'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles = 'inline-flex items-center justify-center gap-2 rounded-md font-semibold transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variantStyles = {
-    primary: 'bg-[#0d7377] text-white hover:bg-[#0a5a5d] active:scale-[0.98] shadow-sm hover:shadow-md',
-    secondary: 'border-2 border-[#0d7377] text-[#0d7377] hover:bg-[#0d7377] hover:text-white',
-    danger: 'bg-[#dc3545] text-white hover:bg-[#c82333] active:scale-[0.98]',
-    ghost: 'text-[#0d7377] hover:bg-[#0d7377]/10',
-    success: 'bg-[#28a745] text-white hover:bg-[#218838] active:scale-[0.98]',
+    primary: 'bg-[#111827] text-white hover:bg-[#0f172a] active:scale-[0.99] shadow-sm hover:shadow-md',
+    secondary: 'border border-[#1f6f6d] text-[#1f6f6d] hover:bg-[#1f6f6d] hover:text-white',
+    danger: 'bg-[#b42318] text-white hover:bg-[#981b10] active:scale-[0.99]',
+    ghost: 'text-[#1f6f6d] hover:bg-[#1f6f6d]/10',
+    success: 'bg-[#c5a24a] text-[#101827] hover:bg-[#b89139] active:scale-[0.99]',
   };
   
   const sizeStyles = {
