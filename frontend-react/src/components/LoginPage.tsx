@@ -89,7 +89,7 @@ export function LoginPage() {
         <div className="mt-8 text-center text-sm text-[#4b5563]">
           <div className="flex items-center justify-center gap-2 mb-2">
             <div className="w-12 h-px bg-gradient-to-r from-transparent via-[#c5a24a] to-transparent opacity-40"></div>
-            <span className="text-[#c5a24a] tracking-[0.2em] uppercase">Institution Suite</span>
+            <span className="text-[#c5a24a] tracking-[0.2em] uppercase">بسم الله</span>
             <div className="w-12 h-px bg-gradient-to-r from-transparent via-[#c5a24a] to-transparent opacity-40"></div>
           </div>
           <p>Religious Technology Solutions</p>
