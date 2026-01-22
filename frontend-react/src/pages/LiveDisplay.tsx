@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Radio, Settings } from 'lucide-react';
+import { TypewriterText } from '../components/ui/TypewriterText';
 
 interface LiveDisplayProps {
   onNavigate?: (page: string) => void;
@@ -253,7 +254,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
             </div>
           )}
 
-          {/* Current Subtitle */}
+          {/* Current Subtitle with Typewriter Animation */}
           <div
             key={currentSubtitle || 'waiting'}
             ref={currentSubtitleRef}
@@ -261,7 +262,12 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
             style={{ backgroundColor: 'rgba(13, 115, 119, 0.18)' }}
           >
             <p className="text-3xl md:text-4xl lg:text-5xl leading-relaxed font-semibold text-white">
-              {currentSubtitle || (
+              {currentSubtitle ? (
+                <TypewriterText 
+                  text={currentSubtitle} 
+                  wordDelay={80}
+                />
+              ) : (
                 connected 
                   ? 'Waiting for sermon to begin...' 
                   : connecting 
