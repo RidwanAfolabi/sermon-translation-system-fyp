@@ -20,6 +20,15 @@ export const ENDPOINTS = {
   // Translation endpoints (from translation_routes.py)
   TRANSLATE: '/translate',
   
+  // Analytics endpoints (from analytics_routes.py with /analytics prefix)
+  ANALYTICS_DASHBOARD: '/analytics/dashboard',
+  ANALYTICS_OVERVIEW: '/analytics/overview',
+  ANALYTICS_PERFORMANCE: '/analytics/performance',
+  ANALYTICS_USAGE: '/analytics/usage',
+  ANALYTICS_ACTIVITY: '/analytics/activity',
+  ANALYTICS_RETRAINING: '/analytics/retraining-data',
+  ANALYTICS_LIVE_SESSIONS: '/analytics/live-sessions',
+  
   // Add new endpoints
   SERMON_STATS: '/sermon/dashboard/stats',
   SERMON_DETAIL: (id: number) => `/sermon/${id}`,
