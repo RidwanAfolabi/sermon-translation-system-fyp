@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 interface TypewriterTextProps {
   text: string;
   className?: string;
-  wordDelay?: number; // ms between words (default: 80ms for smooth real-time feel)
+  wordDelay?: number; // ms between words (default: 250ms to match speaker pace)
   onComplete?: () => void;
 }
 
@@ -19,7 +19,7 @@ interface TypewriterTextProps {
 export function TypewriterText({ 
   text, 
   className = '', 
-  wordDelay = 80,
+  wordDelay = 250,
   onComplete 
 }: TypewriterTextProps) {
   const [visibleWordCount, setVisibleWordCount] = useState(0);
@@ -72,20 +72,17 @@ export function TypewriterText({
   }, [displayText, wordDelay, onComplete, words.length]);
 
   return (
-    <span className={className}>
+    <span className={`${className} inline`} style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
       {words.map((word, index) => (
         <span
           key={`${word}-${index}`}
-          className={`inline-block transition-all duration-200 ease-out ${
+          className={`inline transition-all duration-500 ease-in-out ${
             index < visibleWordCount 
-              ? 'opacity-100 translate-y-0' 
-              : 'opacity-0 translate-y-1'
+              ? 'opacity-100' 
+              : 'opacity-0'
           }`}
-          style={{
-            marginRight: index < words.length - 1 ? '0.3em' : 0,
-          }}
         >
-          {word}
+          {word}{index < words.length - 1 ? ' ' : ''}
         </span>
       ))}
     </span>
