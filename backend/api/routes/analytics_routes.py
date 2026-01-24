@@ -143,42 +143,30 @@ def get_overview_metrics(
     ).scalar() or 0
     
     # ---- Total Segments (current period) ----
-    total_segments = db.query(func.count(models.Segment.id)).filter(
+    total_segments = db.query(func.count(models.Segment.segment_id)).filter(
         models.Segment.created_at >= current_start
     ).scalar() or 0
     
     # If no segments in current period, show total segments
     if total_segments == 0:
-        total_segments = db.query(func.count(models.Segment.id)).scalar() or 0
+        total_segments = db.query(func.count(models.Segment.segment_id)).scalar() or 0
     
     # ---- Accuracy Rate (vetting approval rate) ----
-    approved_count = db.query(func.count(models.Segment.id)).filter(
-        models.Segment.status == 'approved',
-        models.Segment.updated_at >= current_start
+    # Use is_vetted Boolean field instead of status string
+    approved_count = db.query(func.count(models.Segment.segment_id)).filter(
+        models.Segment.is_vetted == True,
+        models.Segment.needs_revision == False
     ).scalar() or 0
     
-    reviewed_count = db.query(func.count(models.Segment.id)).filter(
-        models.Segment.status.in_(['approved', 'rejected', 'needs_revision']),
-        models.Segment.updated_at >= current_start
+    # Reviewed = vetted (approved) + needs_revision
+    reviewed_count = db.query(func.count(models.Segment.segment_id)).filter(
+        (models.Segment.is_vetted == True) | (models.Segment.needs_revision == True)
     ).scalar() or 0
     
     current_accuracy = (approved_count / reviewed_count * 100) if reviewed_count > 0 else 0.0
     
-    # Previous period accuracy
-    prev_approved = db.query(func.count(models.Segment.id)).filter(
-        models.Segment.status == 'approved',
-        models.Segment.updated_at >= previous_start,
-        models.Segment.updated_at < current_start
-    ).scalar() or 0
-    
-    prev_reviewed = db.query(func.count(models.Segment.id)).filter(
-        models.Segment.status.in_(['approved', 'rejected', 'needs_revision']),
-        models.Segment.updated_at >= previous_start,
-        models.Segment.updated_at < current_start
-    ).scalar() or 0
-    
-    previous_accuracy = (prev_approved / prev_reviewed * 100) if prev_reviewed > 0 else 0.0
-    accuracy_change = current_accuracy - previous_accuracy
+    # For simplicity, we don't track historical accuracy changes without updated_at
+    accuracy_change = 0.0
     
     return OverviewMetrics(
         avg_match_score=round(current_avg_score * 100, 1),  # Convert to percentage
@@ -217,17 +205,18 @@ def get_performance_metrics(
     
     translation_speed = (fast_matched / total_matched * 100) if total_matched > 0 else 0.0
     
-    # ---- Theological Accuracy (based on segment status) ----
-    # % of segments that are approved (not rejected or needs_revision)
-    vetted_segments = db.query(func.count(models.Segment.id)).filter(
-        models.Segment.status.in_(['approved', 'rejected', 'needs_revision'])
+    # ---- Theological Accuracy (based on vetting) ----
+    # % of segments that are vetted and don't need revision
+    total_vetted = db.query(func.count(models.Segment.segment_id)).filter(
+        models.Segment.is_vetted == True
     ).scalar() or 0
     
-    approved_segments = db.query(func.count(models.Segment.id)).filter(
-        models.Segment.status == 'approved'
+    approved_vetted = db.query(func.count(models.Segment.segment_id)).filter(
+        models.Segment.is_vetted == True,
+        models.Segment.needs_revision == False
     ).scalar() or 0
     
-    theological_accuracy = (approved_segments / vetted_segments * 100) if vetted_segments > 0 else 0.0
+    theological_accuracy = (approved_vetted / total_vetted * 100) if total_vetted > 0 else 0.0
     
     # ---- Vetting Approval Rate ----
     # Same as theological accuracy for now
@@ -265,25 +254,30 @@ def get_usage_statistics(
     start_date = now - timedelta(days=days)
     
     # Total uploads (sermons created in period)
-    total_uploads = db.query(func.count(models.Sermon.id)).filter(
-        models.Sermon.created_at >= start_date
+    total_uploads = db.query(func.count(models.Sermon.sermon_id)).filter(
+        models.Sermon.date_uploaded >= start_date
     ).scalar() or 0
     
     # If no recent uploads, show total
     if total_uploads == 0:
-        total_uploads = db.query(func.count(models.Sermon.id)).scalar() or 0
+        total_uploads = db.query(func.count(models.Sermon.sermon_id)).scalar() or 0
     
-    # Segments by status
-    pending_review = db.query(func.count(models.Segment.id)).filter(
-        models.Segment.status == 'pending'
+    # Segments by vetting status
+    # Not vetted = pending review
+    pending_review = db.query(func.count(models.Segment.segment_id)).filter(
+        models.Segment.is_vetted == False,
+        models.Segment.needs_revision == False
     ).scalar() or 0
     
-    approved = db.query(func.count(models.Segment.id)).filter(
-        models.Segment.status == 'approved'
+    # Vetted and not needing revision = approved
+    approved = db.query(func.count(models.Segment.segment_id)).filter(
+        models.Segment.is_vetted == True,
+        models.Segment.needs_revision == False
     ).scalar() or 0
     
-    needs_revision = db.query(func.count(models.Segment.id)).filter(
-        models.Segment.status.in_(['needs_revision', 'rejected'])
+    # Needs revision
+    needs_revision = db.query(func.count(models.Segment.segment_id)).filter(
+        models.Segment.needs_revision == True
     ).scalar() or 0
     
     return UsageStatistics(
@@ -309,7 +303,7 @@ def get_activity_feed(
     return [
         ActivityItem(
             id=a.id,
-            activity_type=a.activity_type,
+            activity_type=a.event_type,  # Model uses event_type
             title=a.title,
             description=a.description,
             created_at=a.created_at
@@ -331,7 +325,7 @@ def get_retraining_data(
         models.LiveSessionLog,
         models.Sermon.title.label('sermon_title')
     ).join(
-        models.Sermon, models.LiveSessionLog.sermon_id == models.Sermon.id
+        models.Sermon, models.LiveSessionLog.sermon_id == models.Sermon.sermon_id
     ).filter(
         models.LiveSessionLog.event_type.in_(['skipped', 'wrong_match'])
     )
@@ -349,7 +343,7 @@ def get_retraining_data(
             sermon_id=log.sermon_id,
             sermon_title=sermon_title,
             event_type=log.event_type,
-            segment_order=log.segment_order,
+            segment_order=log.matched_segment_order,
             spoken_text=log.spoken_text,
             alignment_score=log.alignment_score,
             created_at=log.created_at
@@ -371,7 +365,7 @@ def get_live_sessions(
         models.LiveSession,
         models.Sermon.title.label('sermon_title')
     ).join(
-        models.Sermon, models.LiveSession.sermon_id == models.Sermon.id
+        models.Sermon, models.LiveSession.sermon_id == models.Sermon.sermon_id
     )
     
     if status:
@@ -394,10 +388,10 @@ def get_live_sessions(
             started_at=session.started_at,
             ended_at=session.ended_at,
             duration_minutes=round(duration, 1) if duration else None,
-            total_segments=session.total_segments or 0,
-            matched_segments=session.matched_segments or 0,
-            skipped_segments=session.skipped_segments or 0,
-            avg_alignment_score=round(session.avg_alignment_score, 3) if session.avg_alignment_score else None,
+            total_segments=(session.total_segments_matched or 0) + (session.total_segments_skipped or 0),
+            matched_segments=session.total_segments_matched or 0,
+            skipped_segments=session.total_segments_skipped or 0,
+            avg_alignment_score=round(session.avg_match_score, 3) if session.avg_match_score else None,
             status=session.status
         ))
     
