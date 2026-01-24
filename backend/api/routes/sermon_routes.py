@@ -1,12 +1,14 @@
 # backend/api/routes/sermon_routes.py
 """
 API endpoints for sermon management: upload, list, get sermon and segments.
+Includes vetting history and activity logging for analytics.
 """
 
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Body, Response
 from sqlalchemy.orm import Session
 from pathlib import Path
 from typing import Tuple, List, Optional
+from datetime import datetime
 import io, csv, re
 
 from backend.db.session import SessionLocal
@@ -132,6 +134,17 @@ async def upload_sermon(
             sermon.status = "uploaded_raw"
         db.commit()
 
+    # --- ACTIVITY LOG: Sermon uploaded ---
+    activity = models.ActivityLog(
+        event_type="sermon_uploaded",
+        sermon_id=sermon.sermon_id,
+        title="Sermon Uploaded",
+        description=f"'{title}' uploaded with {inserted} segments" if inserted > 0 else f"'{title}' uploaded",
+        actor="admin"
+    )
+    db.add(activity)
+    db.commit()
+
     return {
         "sermon_id": sermon.sermon_id,
         "inserted_segments": inserted,
@@ -180,25 +193,86 @@ def patch_segment(segment_id: int, payload: dict = Body(...), db: Session = Depe
     english_text = payload.get("english_text")
     vetted = payload.get("vetted")
     retranslate = payload.get("retranslate", False)
+    reviewer_notes = payload.get("reviewer_notes")
+    reviewed_by = payload.get("reviewed_by", "admin")  # Default to admin if not provided
 
+    # Track changes for vetting history
+    previous_english = seg.english_text
+    previous_vetted = seg.is_vetted
     changed_malay = False
+    changed_english = False
+    
     if malay_text is not None and malay_text.strip() != (seg.malay_text or "").strip():
         seg.malay_text = malay_text.strip()
         changed_malay = True
 
-    if english_text is not None:
+    if english_text is not None and english_text != previous_english:
         seg.english_text = english_text
+        changed_english = True
 
     if vetted is not None:
         seg.is_vetted = bool(vetted)
+        # Update vetted_by and vetted_at when marking as vetted
+        if bool(vetted) and not previous_vetted:
+            seg.vetted_by = reviewed_by
+            seg.vetted_at = datetime.utcnow()
 
     # On demand retranslation (if malay changed or explicit flag)
     if retranslate or (changed_malay and english_text is None):
         from ml_pipeline.translation_model.inference import translate_text_batch
         result = translate_text_batch([seg.malay_text])[0]
         seg.english_text = result["text"]
+        changed_english = True
         if "confidence" in result:
-            seg.confidence = float(result["confidence"])
+            seg.confidence_score = float(result["confidence"])
+
+    # --- VETTING HISTORY LOGGING ---
+    # Determine the action type
+    action = None
+    if vetted is not None and bool(vetted) and not previous_vetted:
+        action = "approved"
+    elif vetted is not None and not bool(vetted) and previous_vetted:
+        action = "rejected"
+    elif changed_english:
+        action = "edited"
+    
+    if action:
+        # Create vetting history record
+        vetting_record = models.VettingHistory(
+            segment_id=seg.segment_id,
+            sermon_id=seg.sermon_id,
+            action=action,
+            previous_english_text=previous_english if changed_english else None,
+            new_english_text=seg.english_text if changed_english else None,
+            reviewer_notes=reviewer_notes,
+            reviewed_by=reviewed_by
+        )
+        db.add(vetting_record)
+        
+        # Create activity log entry
+        sermon = db.query(models.Sermon).filter(models.Sermon.sermon_id == seg.sermon_id).first()
+        sermon_title = sermon.title if sermon else f"Sermon {seg.sermon_id}"
+        
+        if action == "approved":
+            activity = models.ActivityLog(
+                event_type="segment_approved",
+                sermon_id=seg.sermon_id,
+                segment_id=seg.segment_id,
+                title="Segment Approved",
+                description=f"Segment #{seg.segment_order} in '{sermon_title}' approved",
+                actor=reviewed_by
+            )
+            db.add(activity)
+        elif action == "edited":
+            activity = models.ActivityLog(
+                event_type="segment_edited",
+                sermon_id=seg.sermon_id,
+                segment_id=seg.segment_id,
+                title="Segment Edited",
+                description=f"Segment #{seg.segment_order} in '{sermon_title}' was edited",
+                actor=reviewed_by
+            )
+            db.add(activity)
 
     db.commit()
     db.refresh(seg)
