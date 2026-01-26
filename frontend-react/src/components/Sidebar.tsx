@@ -10,7 +10,7 @@ import {
   Settings, 
   HelpCircle, 
   ChevronLeft,
-  Mosque
+  Landmark
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -44,7 +44,7 @@ export function Sidebar() {
       <div className="p-6 border-b border-[#E0E0E0]">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#0D7377] to-[#14919B] flex items-center justify-center flex-shrink-0">
-            <Mosque className="w-6 h-6 text-white" />
+            <Landmark className="w-6 h-6 text-white" />
           </div>
           {!collapsed && (
             <div className="overflow-hidden">

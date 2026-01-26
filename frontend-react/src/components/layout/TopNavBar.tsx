@@ -29,7 +29,7 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
   ];
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <nav className="bg-[#fffbf3] border-b border-[#e5ded0] sticky top-0 z-40">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left: Logo + Back Button */}
@@ -37,7 +37,7 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
             {showBackButton && backTo ? (
               <button
                 onClick={() => onNavigate(backTo)}
-                className="flex items-center gap-2 text-[#6c757d] hover:text-[#0d7377] transition-colors"
+                className="flex items-center gap-2 text-[#4b5563] hover:text-[#1f6f6d] transition-colors"
               >
                 <ArrowLeft size={20} />
                 <span className="hidden sm:inline">Back</span>
@@ -47,15 +47,15 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
                 onClick={() => onNavigate('dashboard')}
                 className="flex items-center gap-2"
               >
-                <MosqueLogo className="text-[#0d7377]" size={32} />
-                <span className="font-semibold text-[#0d7377] hidden sm:inline">Sermon Translation</span>
+                <MosqueLogo className="text-[#c5a24a]" size={32} />
+                <span className="font-semibold text-[#101827] hidden sm:inline">Sermon Translation</span>
               </button>
             )}
             
             {title && (
               <>
-                <span className="text-gray-300 hidden sm:inline">|</span>
-                <h1 className="text-lg font-semibold text-[#212529] hidden sm:inline">{title}</h1>
+                <span className="text-[#d6cfc0] hidden sm:inline">|</span>
+                <h1 className="text-lg font-semibold text-[#101827] hidden sm:inline">{title}</h1>
               </>
             )}
           </div>
@@ -71,10 +71,10 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
                   className={`
-                    flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all
+                    flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold transition-all
                     ${isActive 
-                      ? 'bg-[#0d7377] text-white' 
-                      : 'text-[#6c757d] hover:bg-gray-100 hover:text-[#212529]'
+                      ? 'bg-[#101827] text-white' 
+                      : 'text-[#4b5563] hover:bg-[#efe9dc] hover:text-[#101827]'
                     }
                   `}
                 >
@@ -98,10 +98,10 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
                     key={item.id}
                     onClick={() => onNavigate(item.id)}
                     className={`
-                      p-2 rounded-lg transition-all
+                      p-2 rounded-md transition-all
                       ${isActive 
-                        ? 'bg-[#0d7377] text-white' 
-                        : 'text-[#6c757d] hover:bg-gray-100'
+                        ? 'bg-[#101827] text-white' 
+                        : 'text-[#4b5563] hover:bg-[#efe9dc]'
                       }
                     `}
                     title={item.label}
@@ -115,7 +115,7 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg text-[#6c757d] hover:bg-gray-100"
+              className="lg:hidden p-2 rounded-md text-[#4b5563] hover:bg-[#efe9dc]"
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -125,7 +125,7 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-gray-200 bg-white">
+        <div className="lg:hidden border-t border-[#e5ded0] bg-[#fffbf3]">
           <div className="px-4 py-3 space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon;
@@ -139,10 +139,10 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
                     setMobileMenuOpen(false);
                   }}
                   className={`
-                    w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all
+                    w-full flex items-center gap-3 px-3 py-3 rounded-md text-left transition-all
                     ${isActive 
-                      ? 'bg-[#0d7377] text-white' 
-                      : 'text-[#6c757d] hover:bg-gray-100'
+                      ? 'bg-[#101827] text-white' 
+                      : 'text-[#4b5563] hover:bg-[#efe9dc]'
                     }
                   `}
                 >
@@ -152,7 +152,7 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
               );
             })}
             
-            <div className="border-t border-gray-200 pt-2 mt-2">
+            <div className="border-t border-[#e5ded0] pt-2 mt-2">
               {secondaryItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentPage === item.id;
@@ -165,10 +165,10 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
                       setMobileMenuOpen(false);
                     }}
                     className={`
-                      w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all
+                      w-full flex items-center gap-3 px-3 py-3 rounded-md text-left transition-all
                       ${isActive 
-                        ? 'bg-[#0d7377] text-white' 
-                        : 'text-[#6c757d] hover:bg-gray-100'
+                        ? 'bg-[#101827] text-white' 
+                        : 'text-[#4b5563] hover:bg-[#efe9dc]'
                       }
                     `}
                   >

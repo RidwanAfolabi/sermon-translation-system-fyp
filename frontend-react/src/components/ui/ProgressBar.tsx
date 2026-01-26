@@ -20,21 +20,21 @@ export function ProgressBar({
   };
 
   const colors = {
-    primary: 'bg-[#0d7377]',
-    success: 'bg-[#28a745]',
-    warning: 'bg-[#ffc107]',
-    error: 'bg-[#dc3545]',
+    primary: 'bg-[#1f6f6d]',
+    success: 'bg-[#1f8f5f]',
+    warning: 'bg-[#c87f1a]',
+    error: 'bg-[#b42318]',
   };
 
   return (
     <div className="w-full">
       {(label || showPercentage) && (
         <div className="flex justify-between items-center mb-1.5">
-          {label && <span className="text-sm text-[#6c757d]">{label}</span>}
-          {showPercentage && <span className="text-sm font-medium">{percentage}%</span>}
+            {label && <span className="text-sm text-[#4b5563]">{label}</span>}
+            {showPercentage && <span className="text-sm font-semibold text-[#101827]">{percentage}%</span>}
         </div>
       )}
-      <div className={`w-full bg-gray-200 rounded-full overflow-hidden ${heights[size]}`}>
+          <div className={`w-full bg-[#efe9dc] rounded-full overflow-hidden ${heights[size]}`}>
         <div
           className={`${colors[color]} ${heights[size]} rounded-full transition-all duration-500 ease-out`}
           style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}

@@ -83,7 +83,7 @@ export default function App() {
             richColors
             closeButton
             toastOptions={{
-              style: { background: 'white', border: '1px solid #e0e0e0' },
+              style: { background: '#fffbf3', border: '1px solid #e5ded0', color: '#101827' },
             }}
           />
         </HashRouter>
@@ -323,7 +323,7 @@ function TopNavShell({
   backTo?: string;
 }) {
   return (
-    <div className="min-h-screen bg-[#f8f9fa] flex flex-col">
+    <div className="min-h-screen app-shell flex flex-col">
       <TopNavBar
         currentPage={currentPage}
         onNavigate={onNavigate}
@@ -346,12 +346,12 @@ function FloatingVettingButton({
       <div className="relative group">
         <button
           onClick={() => onNavigate('vetting')}
-          className="w-14 h-14 rounded-full bg-[#d4a03e] text-white shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center"
+          className="w-14 h-14 rounded-full bg-[#c5a24a] text-[#101827] shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all hover:scale-105 flex items-center justify-center"
           title="Vetting Dashboard"
         >
           <span className="text-2xl">✓</span>
         </button>
-        <div className="absolute bottom-full right-0 mb-2 bg-[#212529] text-white px-3 py-1.5 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <div className="absolute bottom-full right-0 mb-2 bg-[#101827] text-white px-3 py-1.5 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           Vetting Dashboard
         </div>
       </div>
@@ -365,31 +365,31 @@ function LiveLanding({
   onNavigate: (page: string) => void;
 }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center bg-[#f8f9fa] gap-6">
+    <div className="flex-1 flex flex-col items-center justify-center app-shell gap-6">
       <div className="text-center max-w-2xl">
-        <div className="text-6xl mb-4">📡</div>
-        <h2 className="mb-2">Live Subtitle System</h2>
-        <p className="text-[#6c757d] mb-8">
-          Choose how you want to interact with the live translation system
+        <div className="section-kicker kicker-line justify-center">Live Operations</div>
+        <h2 className="section-title">Live Subtitle System</h2>
+        <p className="section-subtitle mx-auto mb-8">
+          Select a control mode for synchronized translation and congregation display.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <button
             onClick={() => onNavigate('controlRoom')}
-            className="p-8 rounded-xl bg-white border-2 border-gray-200 hover:border-[#0d7377] hover:shadow-lg transition-all text-left group"
+            className="p-8 rounded-2xl bg-[#fffbf3] border border-[#e5ded0] hover:border-[#c5a24a] hover:shadow-[var(--shadow-card)] transition-all text-left group"
           >
             <div className="text-5xl mb-4">🎛️</div>
-            <h3 className="text-lg font-semibold mb-2 group-hover:text-[#0d7377]">Control Room</h3>
-            <p className="text-sm text-[#6c757d]">
+            <h3 className="text-lg font-semibold mb-2 group-hover:text-[#1f6f6d]">Control Room</h3>
+            <p className="text-sm text-[#4b5563]">
               Operator dashboard with ASR monitoring, segment matching, and live controls.
             </p>
           </button>
           <button
             onClick={() => onNavigate('liveDisplay')}
-            className="p-8 rounded-xl bg-white border-2 border-gray-200 hover:border-[#0d7377] hover:shadow-lg transition-all text-left group"
+            className="p-8 rounded-2xl bg-[#fffbf3] border border-[#e5ded0] hover:border-[#c5a24a] hover:shadow-[var(--shadow-card)] transition-all text-left group"
           >
             <div className="text-5xl mb-4">📺</div>
-            <h3 className="text-lg font-semibold mb-2 group-hover:text-[#0d7377]">Live Display</h3>
-            <p className="text-sm text-[#6c757d]">
+            <h3 className="text-lg font-semibold mb-2 group-hover:text-[#1f6f6d]">Live Display</h3>
+            <p className="text-sm text-[#4b5563]">
               Full-screen subtitle view for congregation displays and projectors.
             </p>
           </button>
@@ -401,25 +401,25 @@ function LiveLanding({
 
 function TranslationSettingsPage() {
   return (
-    <div className="flex-1 flex items-center justify-center bg-[#f8f9fa]">
+    <div className="flex-1 flex items-center justify-center app-shell">
       <div className="text-center max-w-md">
-        <div className="text-6xl mb-4">🌐</div>
-        <h2 className="mb-2">Translation Settings</h2>
-        <p className="text-[#6c757d] mb-6">Configure translation providers and models</p>
-        <div className="space-y-3">
-          <div className="p-4 bg-white rounded-lg border border-gray-200 text-left">
+        <div className="section-kicker kicker-line justify-center">Translation</div>
+        <h2 className="section-title">Translation Settings</h2>
+        <p className="section-subtitle mx-auto mb-6">Configure translation providers and models</p>
+        <div className="space-y-3 text-left">
+          <div className="panel-strong p-4">
             <div className="flex items-center justify-between">
-              <span className="font-medium">Gemini AI</span>
-              <span className="text-xs px-2 py-1 bg-[#28a745]/10 text-[#28a745] rounded">Active</span>
+              <span className="font-semibold">Gemini AI</span>
+              <span className="text-xs px-2 py-1 bg-[#c5a24a]/15 text-[#8a6b1f] rounded-full">Active</span>
             </div>
-            <p className="text-sm text-[#6c757d] mt-1">Primary translation provider</p>
+            <p className="text-sm text-[#4b5563] mt-1">Primary translation provider</p>
           </div>
-          <div className="p-4 bg-white rounded-lg border border-gray-200 text-left">
+          <div className="panel p-4">
             <div className="flex items-center justify-between">
-              <span className="font-medium">Marian NMT</span>
-              <span className="text-xs px-2 py-1 bg-[#6c757d]/10 text-[#6c757d] rounded">Offline Backup</span>
+              <span className="font-semibold">Marian NMT</span>
+              <span className="text-xs px-2 py-1 bg-[#efe9dc] text-[#4b5563] rounded-full">Offline Backup</span>
             </div>
-            <p className="text-sm text-[#6c757d] mt-1">Local neural machine translation</p>
+            <p className="text-sm text-[#4b5563] mt-1">Secondary translation model</p>
           </div>
         </div>
       </div>
