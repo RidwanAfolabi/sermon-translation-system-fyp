@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Radio, Settings } from 'lucide-react';
+import { TypewriterText } from '../components/ui/TypewriterText';
 
 interface LiveDisplayProps {
   onNavigate?: (page: string) => void;
@@ -8,10 +9,15 @@ interface LiveDisplayProps {
 const LIVE_DISPLAY_STORAGE_KEY = 'liveDisplayContext';
 const BROADCAST_CHANNEL_NAME = 'khutbah_subtitles';
 
+interface SubtitleEntry {
+  text: string;
+  isSkipped: boolean;
+}
+
 export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
   // Local state for subtitle display - populated via BroadcastChannel
-  const [currentSubtitle, setCurrentSubtitle] = useState<string>('');
-  const [previousSubtitles, setPreviousSubtitles] = useState<string[]>([]);
+  const [currentSubtitle, setCurrentSubtitle] = useState<SubtitleEntry>({ text: '', isSkipped: false });
+  const [previousSubtitles, setPreviousSubtitles] = useState<SubtitleEntry[]>([]);
   const [sermonTitle, setSermonTitle] = useState<string>('');
   const [segmentOrder, setSegmentOrder] = useState<number>(0);
   const [totalSegments, setTotalSegments] = useState<number>(0);
@@ -27,16 +33,16 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
   const connectionCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Helper to display a subtitle (handles pushing to history)
-  const displaySubtitle = (text: string) => {
+  const displaySubtitle = (text: string, isSkipped: boolean = false) => {
     if (!text) return;
     setCurrentSubtitle(prev => {
-      if (prev && prev !== text) {
+      if (prev.text && prev.text !== text) {
         setPreviousSubtitles(prevSubs => {
           const newPrevious = [prev, ...prevSubs].slice(0, 5);
           return newPrevious;
         });
       }
-      return text;
+      return { text, isSkipped };
     });
   };
 
@@ -63,22 +69,10 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
       }
 
       if (msg?.type === 'subtitle' && msg.text) {
-        // Handle skipped segments first (if any)
-        if (msg.skippedSegments && msg.skippedSegments.length > 0) {
-          msg.skippedSegments.forEach((skippedText: string, idx: number) => {
-            setTimeout(() => {
-              displaySubtitle(skippedText);
-            }, idx * 1500); // Stagger display
-          });
-          
-          // Then show current segment after all skipped
-          setTimeout(() => {
-            displaySubtitle(msg.text);
-          }, msg.skippedSegments.length * 1500);
-        } else {
-          // No skipped segments, display directly
-          displaySubtitle(msg.text);
-        }
+        console.log('[LiveDisplay] Received:', { text: msg.text.substring(0, 30), isSkipped: msg.isSkipped });
+        
+        // Display the subtitle with its skipped status
+        displaySubtitle(msg.text, msg.isSkipped === true);
 
         // Update metadata
         if (msg.order) setSegmentOrder(msg.order);
@@ -151,7 +145,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
 
   // Display settings
   const historyDisplayCount = 5;
-  const historyOpacity = ['text-white/80', 'text-white/70', 'text-white/60', 'text-white/50', 'text-white/40'];
+  const historyOpacity = ['opacity-80', 'opacity-70', 'opacity-60', 'opacity-50', 'opacity-40'];
   const orderedHistory = [...previousSubtitles.slice(0, historyDisplayCount)].reverse();
 
   return (
@@ -240,11 +234,16 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
               <div className="space-y-2">
                 {orderedHistory.map((subtitle, index) => {
                   const opacityIndex = orderedHistory.length - 1 - index;
-                  const opacityClass = historyOpacity[opacityIndex] || 'text-white/30';
+                  const opacity = [0.8, 0.7, 0.6, 0.5, 0.4][opacityIndex] || 0.3;
+                  const isSkipped = subtitle.isSkipped === true;
+                  const textColor = isSkipped ? '#ef4444' : '#ffffff'; // Red for skipped, white for normal
                   return (
-                    <div key={`history-${index}-${subtitle.slice(0, 20)}`} className="text-center px-4 subtitle-fade">
-                      <p className={`text-2xl md:text-3xl lg:text-4xl leading-relaxed font-medium ${opacityClass}`}>
-                        {subtitle}
+                    <div key={`history-${index}-${subtitle.text.slice(0, 20)}`} className="text-center px-4 subtitle-fade">
+                      <p 
+                        className="text-2xl md:text-3xl lg:text-4xl leading-relaxed font-medium"
+                        style={{ color: textColor, opacity: opacity }}
+                      >
+                        {subtitle.text}
                       </p>
                     </div>
                   );
@@ -253,19 +252,30 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
             </div>
           )}
 
-          {/* Current Subtitle */}
+          {/* Current Subtitle with Typewriter Animation */}
           <div
-            key={currentSubtitle || 'waiting'}
+            key={currentSubtitle.text || 'waiting'}
             ref={currentSubtitleRef}
             className="text-center px-8 py-10 live-display-panel subtitle-fade"
           >
-            <p className="text-3xl md:text-4xl lg:text-5xl leading-relaxed font-semibold text-white">
-              {currentSubtitle || (
-                connected 
-                  ? 'Waiting for sermon to begin...' 
-                  : connecting 
-                    ? 'Connecting to Control Room...'
-                    : 'Start monitoring in Control Room'
+            <p 
+              className="text-3xl md:text-4xl lg:text-5xl leading-relaxed font-semibold"
+              style={{ color: currentSubtitle.isSkipped ? '#ef4444' : '#ffffff' }}
+            >
+              {currentSubtitle.text ? (
+                <TypewriterText 
+                  text={currentSubtitle.text} 
+                  wordDelay={250}
+                />
+              ) : (
+                <span>
+                  {connected 
+                    ? 'Waiting for sermon to begin...' 
+                    : connecting 
+                      ? 'Connecting to Control Room...'
+                      : 'Start monitoring in Control Room'
+                  }
+                </span>
               )}
             </p>
           </div>
@@ -276,7 +286,9 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
       <div className="flex-shrink-0 border-t border-white/10 px-4 py-2" style={{ backgroundColor: 'rgba(16, 24, 39, 0.82)' }}>
         <div className="flex items-center justify-between text-xs text-white/60">
           <span>Segment: {segmentOrder}/{totalSegments || '—'}</span>
-          <span>Synced via BroadcastChannel</span>
+          <span className={currentSubtitle.isSkipped ? 'text-red-500 font-bold' : ''}>
+            {currentSubtitle.isSkipped ? 'SKIPPED SEGMENT' : 'Synced via BroadcastChannel'}
+          </span>
           <span className="font-mono">{formatTime(sessionTime)}</span>
         </div>
       </div>

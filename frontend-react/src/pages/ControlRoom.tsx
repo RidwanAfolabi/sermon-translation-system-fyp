@@ -93,17 +93,53 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
 
     lastBroadcastedSubtitleRef.current = currentSubtitle;
 
-    broadcastChannelRef.current.postMessage({
-      type: 'subtitle',
-      text: currentSubtitle,
-      order: segmentOrder,
-      skippedSegments: skippedSegments.map(s => s.english_text),
-      previousSubtitles: previousSubtitles,
-      sermonTitle: sermonTitle,
-      totalSegments: totalSegments,
-      sessionTime: sessionTime,
-      connected: connected,
-    });
+    console.log('[ControlRoom] Broadcasting - skippedSegments:', skippedSegments?.length || 0, skippedSegments);
+
+    // First, broadcast each skipped segment individually with isSkipped flag
+    if (skippedSegments && skippedSegments.length > 0) {
+      skippedSegments.forEach((seg, idx) => {
+        setTimeout(() => {
+          console.log('[ControlRoom] Sending SKIPPED segment:', seg.english_text);
+          broadcastChannelRef.current?.postMessage({
+            type: 'subtitle',
+            text: seg.english_text,
+            isSkipped: true, // Mark as skipped
+            order: seg.order,
+            sermonTitle: sermonTitle,
+            totalSegments: totalSegments,
+            sessionTime: sessionTime,
+            connected: connected,
+          });
+        }, idx * 1500);
+      });
+      
+      // Then broadcast the current (non-skipped) segment after all skipped ones
+      setTimeout(() => {
+        console.log('[ControlRoom] Sending NORMAL segment after skipped:', currentSubtitle);
+        broadcastChannelRef.current?.postMessage({
+          type: 'subtitle',
+          text: currentSubtitle,
+          isSkipped: false,
+          order: segmentOrder,
+          sermonTitle: sermonTitle,
+          totalSegments: totalSegments,
+          sessionTime: sessionTime,
+          connected: connected,
+        });
+      }, skippedSegments.length * 1500);
+    } else {
+      // No skipped segments, broadcast current directly
+      broadcastChannelRef.current.postMessage({
+        type: 'subtitle',
+        text: currentSubtitle,
+        isSkipped: false,
+        order: segmentOrder,
+        sermonTitle: sermonTitle,
+        totalSegments: totalSegments,
+        sessionTime: sessionTime,
+        connected: connected,
+      });
+    }
   }, [currentSubtitle, segmentOrder, skippedSegments, previousSubtitles, sermonTitle, totalSegments, sessionTime, connected]);
 
   // Broadcast connection status changes
