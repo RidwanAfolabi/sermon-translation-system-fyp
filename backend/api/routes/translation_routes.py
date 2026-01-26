@@ -61,6 +61,20 @@ def translate_start(sermon_id: int = Form(...), db: Session = Depends(get_db)):
     db.commit()
     logger.info(f"Translation completed for sermon_id={sermon_id} ({len(translations)} segments).")
 
+    # --- ACTIVITY LOG: Translation completed ---
+    sermon = db.query(models.Sermon).filter(models.Sermon.sermon_id == sermon_id).first()
+    sermon_title = sermon.title if sermon else f"Sermon {sermon_id}"
+    
+    activity = models.ActivityLog(
+        event_type="translation_completed",
+        sermon_id=sermon_id,
+        title="Translation Completed",
+        description=f"'{sermon_title}' - {len(translations)} segments translated",
+        actor="system"
+    )
+    db.add(activity)
+    db.commit()
+
     return {
         "status": "success",
         "translated_count": len(translations),
