@@ -155,14 +155,14 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
   const orderedHistory = [...previousSubtitles.slice(0, historyDisplayCount)].reverse();
 
   return (
-    <div className="h-screen flex flex-col text-white overflow-hidden" style={{ backgroundColor: '#0a0a14' }}>
+    <div className="h-screen flex flex-col text-white overflow-hidden live-display-background">
       
       {/* No Control Room / Manual Selector Modal */}
       {showSelector && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.95)' }}>
-          <div className="rounded-2xl p-8 max-w-lg w-full mx-4 border border-white/10" style={{ backgroundColor: '#12121a' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(6, 9, 17, 0.96)' }}>
+          <div className="rounded-2xl p-8 max-w-lg w-full mx-4 border border-white/10" style={{ backgroundColor: '#111827' }}>
             <div className="text-center mb-6">
-              <Radio size={48} className="mx-auto mb-4 text-[#00e676]" />
+              <Radio size={48} className="mx-auto mb-4 text-[#c5a24a]" />
               <h2 className="text-2xl font-semibold mb-2">
                 {noControlRoom ? 'Waiting for Control Room' : 'Live Display'}
               </h2>
@@ -177,7 +177,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
             <div className="space-y-3">
               <button
                 onClick={handleBackToControlRoom}
-                className="w-full px-6 py-3 bg-[#0d7377] text-white font-semibold rounded-lg hover:bg-[#0a5c5f] transition-colors"
+                className="w-full px-6 py-3 bg-[#c5a24a] text-[#101827] font-semibold rounded-lg hover:bg-[#b89139] transition-colors"
               >
                 Open Control Room
               </button>
@@ -196,29 +196,29 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
       )}
 
       {/* Top Bar - ALWAYS VISIBLE */}
-      <div className="flex-shrink-0 border-b border-white/10 px-4 py-2" style={{ backgroundColor: '#0d0d15' }}>
+      <div className="flex-shrink-0 border-b border-white/10 px-4 py-2" style={{ backgroundColor: 'rgba(16, 24, 39, 0.82)' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Radio size={20} className="text-[#0d7377]" />
-            <span className="text-white font-medium">Live Display</span>
+            <Radio size={20} className="text-[#c5a24a]" />
+            <span className="text-white font-semibold tracking-wide">Live Display</span>
           </div>
           
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${
-                connected ? 'bg-[#00e676] animate-pulse' : 
-                connecting ? 'bg-yellow-500 animate-pulse' : 
+                connected ? 'bg-[#1f8f5f] animate-pulse' : 
+                connecting ? 'bg-[#c87f1a] animate-pulse' : 
                 'bg-gray-500'
               }`} />
-              <span className={`text-xs font-medium ${
-                connected ? 'text-[#00e676]' : 
-                connecting ? 'text-yellow-500' : 
-                'text-gray-500'
+              <span className={`text-xs font-semibold tracking-wide ${
+                connected ? 'text-[#1f8f5f]' : 
+                connecting ? 'text-[#c87f1a]' : 
+                'text-gray-400'
               }`}>
                 {connected ? 'LIVE' : connecting ? 'WAITING FOR STREAM' : 'OFFLINE'}
               </span>
             </div>
-            <span className="text-white/50 text-sm">{sermonTitle || 'No sermon selected'}</span>
+            <span className="text-white/60 text-sm">{sermonTitle || 'No sermon selected'}</span>
           </div>
 
           <button
@@ -232,7 +232,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
       </div>
 
       {/* Main Display - Previous lines stack above current */}
-      <div className="flex-1 flex flex-col justify-center px-8 py-4 overflow-y-auto scroll-smooth">
+      <div className="flex-1 flex flex-col justify-center px-8 py-6 overflow-y-auto scroll-smooth">
         <div className="max-w-6xl mx-auto w-full flex flex-col gap-6">
           {/* Previous Subtitles (oldest at top, newest closest to current line) */}
           {orderedHistory.length > 0 && (
@@ -257,8 +257,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
           <div
             key={currentSubtitle || 'waiting'}
             ref={currentSubtitleRef}
-            className="text-center px-6 py-8 rounded-2xl border border-[#0d7377]/40 shadow-[0_0_80px_rgba(13,115,119,0.25)] subtitle-fade"
-            style={{ backgroundColor: 'rgba(13, 115, 119, 0.18)' }}
+            className="text-center px-8 py-10 live-display-panel subtitle-fade"
           >
             <p className="text-3xl md:text-4xl lg:text-5xl leading-relaxed font-semibold text-white">
               {currentSubtitle || (
@@ -274,7 +273,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
       </div>
 
       {/* Bottom Status Bar */}
-      <div className="flex-shrink-0 border-t border-white/10 px-4 py-2" style={{ backgroundColor: '#0d0d15' }}>
+      <div className="flex-shrink-0 border-t border-white/10 px-4 py-2" style={{ backgroundColor: 'rgba(16, 24, 39, 0.82)' }}>
         <div className="flex items-center justify-between text-xs text-white/60">
           <span>Segment: {segmentOrder}/{totalSegments || '—'}</span>
           <span>Synced via BroadcastChannel</span>

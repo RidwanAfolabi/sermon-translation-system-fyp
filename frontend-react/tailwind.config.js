@@ -7,56 +7,66 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary colors
+        ink: {
+          900: '#101827',
+          800: '#1b2430',
+          700: '#283140',
+        },
+        slate: {
+          600: '#4b5563',
+        },
         primary: {
-          DEFAULT: '#0d7377',
-          dark: '#0a5a5d',
-          light: '#0d7377/10',
+          DEFAULT: '#111827',
+          dark: '#0b1220',
+          soft: '#1b2430',
         },
-        // Secondary / Accent colors
+        secondary: {
+          DEFAULT: '#1f6f6d',
+          dark: '#1f5f5b',
+        },
         accent: {
-          gold: '#d4a03e',
-          goldLight: '#d4a03e/10',
+          gold: '#c5a24a',
+          sand: '#f2e6c9',
         },
-        // Status colors
         success: {
-          DEFAULT: '#28a745',
-          light: '#28a745/10',
+          DEFAULT: '#1f8f5f',
+          light: '#e7f5ef',
         },
         warning: {
-          DEFAULT: '#ffc107',
-          light: '#ffc107/10',
+          DEFAULT: '#c87f1a',
+          light: '#f8eed9',
         },
         error: {
-          DEFAULT: '#dc3545',
-          light: '#dc3545/10',
+          DEFAULT: '#b42318',
+          light: '#fdecec',
         },
         live: {
-          DEFAULT: '#00e676',
-          dark: '#00c853',
+          DEFAULT: '#1f8f5f',
+          dark: '#16764e',
         },
-        // Background
-        background: '#f8f9fa',
-        // Text
+        background: '#f4f1e9',
+        surface: '#fffbf3',
+        line: '#e5ded0',
         text: {
-          primary: '#212529',
-          secondary: '#6c757d',
+          primary: '#101827',
+          secondary: '#4b5563',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Source Sans 3"', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['"IBM Plex Sans"', '"Source Sans 3"', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        card: '0 2px 8px rgba(0, 0, 0, 0.08)',
-        'card-hover': '0 4px 16px rgba(0, 0, 0, 0.12)',
-        button: '0 2px 4px rgba(13, 115, 119, 0.2)',
-        'button-hover': '0 4px 8px rgba(13, 115, 119, 0.3)',
+        card: '0 8px 20px rgba(16, 24, 39, 0.12)',
+        'card-hover': '0 14px 30px rgba(16, 24, 39, 0.16)',
+        button: '0 6px 14px rgba(16, 24, 39, 0.18)',
+        'button-hover': '0 10px 22px rgba(16, 24, 39, 0.24)',
       },
       borderRadius: {
         DEFAULT: '0.5rem',
         lg: '0.75rem',
         xl: '1rem',
-        '2xl': '1.5rem',
+        '2xl': '1.25rem',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

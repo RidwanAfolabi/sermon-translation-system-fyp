@@ -8,16 +8,16 @@ interface BadgeProps {
 
 export function Badge({ status, children, icon }: BadgeProps) {
   const styles = {
-    vetted: 'bg-[#28a745]/10 text-[#28a745] border-[#28a745]/20',
-    pending: 'bg-[#ffc107]/10 text-[#a37800] border-[#ffc107]/20',
-    error: 'bg-[#dc3545]/10 text-[#dc3545] border-[#dc3545]/20',
-    processing: 'bg-[#007bff]/10 text-[#007bff] border-[#007bff]/20',
-    live: 'bg-[#00e676]/10 text-[#00c853] border-[#00e676]/20 animate-pulse',
-    ready: 'bg-[#28a745]/10 text-[#28a745] border-[#28a745]/20',
+    vetted: 'bg-[#c5a24a]/15 text-[#8a6b1f] border-[#c5a24a]/30',
+    pending: 'bg-[#c87f1a]/10 text-[#a06010] border-[#c87f1a]/30',
+    error: 'bg-[#b42318]/10 text-[#b42318] border-[#b42318]/30',
+    processing: 'bg-[#1f6f6d]/10 text-[#1f6f6d] border-[#1f6f6d]/30',
+    live: 'bg-[#1f8f5f]/10 text-[#1f8f5f] border-[#1f8f5f]/30 animate-pulse',
+    ready: 'bg-[#1f8f5f]/10 text-[#1f8f5f] border-[#1f8f5f]/30',
   };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-sm font-medium ${styles[status]}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-sm font-semibold tracking-wide ${styles[status]}`}>
       {icon && <span className="text-xs">{icon}</span>}
       {children}
     </span>
