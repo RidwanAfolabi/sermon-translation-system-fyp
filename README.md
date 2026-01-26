@@ -1,4 +1,4 @@
-# 🕌 AI-Driven Malay–English Sermon Translation System
+# 🕌 AI-DRIVEN SERMON TRANSLATION & REAL-TIME SUBTITLE DISPLAY
 
 > A hybrid AI–human translation system designed to accurately translate and display English subtitles for Malay Islamic sermons (khutbah), ensuring theological precision and near-real-time synchronization.
 
@@ -6,7 +6,7 @@
 
 ## 🌍 Overview
 
-The **AI-Driven Sermon Translation System** bridges the linguistic gap for non-Malay-speaking audiences during live sermons at mosques.
+The **AI-Driven Sermon Translation & Real-Time Subtitle Display** system bridges the linguistic gap for non-Malay-speaking audiences during live sermons at mosques.
 
 Unlike traditional live translators or real-time MT systems, this solution **pre-translates and vets the sermon script with human experts before the sermon**, then intelligently synchronizes and displays the correct English subtitles as the speaker delivers the sermon in Malay.
 
@@ -76,20 +76,22 @@ sermon-translation-system-fyp/
 │   │   └── alembic/                  # Database migrations
 │   └── main.py                       # FastAPI application entry
 │
-├── frontend/
-│   ├── admin-dashboard/        # Upload sermons, manage segments
-│   ├── subtitle-interface/     # Live subtitle display (WebSocket client)
-│   └── vetting-dashboard/      # Human review/correction of translations
+├── frontend-react/             # React + TypeScript frontend
+│   ├── src/
+│   │   ├── pages/              # Dashboard, Upload, Library, Control Room, etc.
+│   │   ├── components/         # Reusable UI components
+│   │   ├── services/           # API & WebSocket services
+│   │   └── context/            # Auth & LiveStream context
+│   └── package.json
 │
 ├── ml_pipeline/
 │   ├── speech_recognition/
 │   │   └── whisper_listener.py       # Faster-Whisper real-time ASR
 │   ├── alignment_module/
 │   │   ├── aligner.py                # Rule-based fuzzy alignment
-│   │   ├── semantic_aligner.py       # Sentence-transformer alignment (optional)
 │   │   └── segmenter.py              # Text segmentation utilities
 │   ├── translation_model/
-│   │   ├── inference.py              # Translation model inference
+│   │   ├── inference.py              # Translation model inference (Marian + Gemini)
 │   │   ├── preprocess.py             # Text preprocessing
 │   │   └── glossary.json             # Domain-specific terminology
 │   └── retraining/
@@ -121,8 +123,8 @@ sermon-translation-system-fyp/
 | **Database** | PostgreSQL 18 |
 | **Speech Recognition** | Faster-Whisper Large-V3 (CTranslate2) |
 | **Alignment** | Rule-based fuzzy matching (difflib + synonym mapping) |
-| **Translation** | Hugging Face Transformers (Helsinki-NLP/opus-mt-ms-en) |
-| **Frontend** | HTML5, CSS3, Vanilla JavaScript |
+| **Translation** | MarianMT (Hugging Face) + Google Gemini API (optional) |
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Radix UI |
 | **WebSocket** | Starlette WebSockets (via FastAPI) |
 
 ---
@@ -132,6 +134,7 @@ sermon-translation-system-fyp/
 ### Prerequisites
 
 - Python 3.11+
+- Node.js 18+
 - PostgreSQL 18+
 - Microphone (for live ASR)
 - CUDA-capable GPU (recommended for Whisper Large-V3)
@@ -199,25 +202,13 @@ alembic -c .\alembic.ini upgrade head
 uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### 7. Launch Frontend Interfaces
-
-Open separate terminals or browser tabs:
+### 7. Launch Frontend
 
 ```powershell
-# Admin Dashboard (port 5500)
-cd frontend\admin-dashboard
-python -m http.server 5500 --bind 127.0.0.1
-# Open: http://127.0.0.1:5500/index.html
-
-# Subtitle Interface (port 5501)
-cd frontend\subtitle-interface
-python -m http.server 5501 --bind 127.0.0.1
-# Open: http://127.0.0.1:5501/index.html
-
-# Vetting Dashboard (port 5502)
-cd frontend\vetting-dashboard
-python -m http.server 5502 --bind 127.0.0.1
-# Open: http://127.0.0.1:5502/index.html
+cd frontend-react
+npm install
+npm run dev
+# Opens at http://localhost:3000
 ```
 
 ---
@@ -233,7 +224,7 @@ python -m http.server 5502 --bind 127.0.0.1
 | POST | `/sermon/upload` | Upload new sermon |
 | GET | `/sermon/{id}/segments` | Get sermon segments |
 | PATCH | `/sermon/segment/{id}` | Update segment (vetting) |
-| POST | `/translate` | Translate text |
+| POST | `/sermon/{id}/translate` | Translate sermon segments |
 
 ### WebSocket Endpoints
 
@@ -326,9 +317,9 @@ CREATE TABLE segments (
 - [x] Whisper ASR integration (Faster-Whisper Large-V3)
 - [x] Rule-based alignment module
 - [x] Multi-client WebSocket support
-- [x] Admin dashboard (upload/manage sermons)
-- [x] Vetting dashboard (human review)
-- [x] Subtitle display interface
+- [x] React + TypeScript frontend
+- [x] Control Room & Live Display interfaces
+- [x] Vetting workflow & segment editor
 - [ ] Semantic alignment (sentence-transformers) — *in progress*
 - [ ] Translation model fine-tuning pipeline
 - [ ] Post-service logging and analytics
