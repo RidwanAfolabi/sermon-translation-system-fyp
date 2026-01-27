@@ -168,14 +168,17 @@ pip install -r requirements.txt
 Copy the `.env.example` file to `.env` and fill in the required values:
 
 ```powershell
-cp .env.example .env
+Copy-Item .env.example .env
 ```
 
 Then edit the `.env` file with your specific configuration values. See [`.env.example`](.env.example) for the complete list of available environment variables and their descriptions.
 
 **Required variables:**
 - `DATABASE_URL` - PostgreSQL connection string
-- `WHISPER_MODEL`, `WHISPER_LANG`, `WHISPER_BLOCK_SECS`, `WHISPER_DEVICE` - Whisper ASR settings
+- `WHISPER_MODEL` - Whisper model size (e.g., large-v3)
+- `WHISPER_LANG` - ASR language (ms = Malay)
+- `WHISPER_BLOCK_SECS` - Audio chunk duration in seconds
+- `WHISPER_DEVICE` - Device selection (auto/cuda/cpu)
 - `LIVE_INITIAL_THRESHOLD` - Alignment threshold
 - `HF_HUB_DISABLE_SYMLINKS=1` - Required on Windows to avoid symlink errors
 
