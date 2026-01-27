@@ -182,7 +182,7 @@ Then edit the `.env` file with your specific configuration values. See [`.env.ex
 - `LIVE_INITIAL_THRESHOLD` - Alignment threshold
 - `HF_HUB_DISABLE_SYMLINKS` - Set to 1 on Windows to avoid symlink errors
 
-### 5. Initialize the Database
+### 5. Initialize the Database (Use Terminal)
 
 ```powershell
 # Create database and user (run as postgres superuser)
@@ -199,7 +199,7 @@ alembic -c .\alembic.ini upgrade head
 uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### 7. Launch Frontend
+### 7. Launch Frontend (open another terminal)
 
 ```powershell
 cd frontend-react
