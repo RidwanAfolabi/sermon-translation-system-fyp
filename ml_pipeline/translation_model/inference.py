@@ -15,7 +15,7 @@ from transformers import MarianMTModel, MarianTokenizer
 import logging
 import json
 import os
-import re  # <-- ADD THIS LINE
+import re
 import requests
 from dotenv import load_dotenv
 
