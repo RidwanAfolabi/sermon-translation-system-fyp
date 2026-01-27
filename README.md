@@ -165,25 +165,19 @@ pip install -r requirements.txt
 
 ### 4. Configure Environment Variables
 
-Create a `.env` file or set environment variables:
+Copy the `.env.example` file to `.env` and fill in the required values:
 
 ```powershell
-# Database connection
-$env:DATABASE_URL = "postgresql+psycopg2://fyp_user:<YOUR_PASSWORD>@localhost:5432/sermon_translation_db"
-
-# Whisper ASR settings
-$env:WHISPER_MODEL = "large-v3"
-$env:WHISPER_LANG = "ms"
-$env:WHISPER_BLOCK_SECS = "6"
-$env:WHISPER_DEVICE = "auto"
-
-# Alignment settings
-$env:ALIGNER_MODE = "rule"
-$env:LIVE_INITIAL_THRESHOLD = "0.45"
-
-# Windows-specific (avoid symlink errors)
-$env:HF_HUB_DISABLE_SYMLINKS = "1"
+cp .env.example .env
 ```
+
+Then edit the `.env` file with your specific configuration values. See [`.env.example`](.env.example) for the complete list of available environment variables and their descriptions.
+
+**Required variables:**
+- `DATABASE_URL` - PostgreSQL connection string
+- `WHISPER_MODEL`, `WHISPER_LANG`, `WHISPER_BLOCK_SECS`, `WHISPER_DEVICE` - Whisper ASR settings
+- `LIVE_INITIAL_THRESHOLD` - Alignment threshold
+- `HF_HUB_DISABLE_SYMLINKS=1` - Required on Windows to avoid symlink errors
 
 ### 5. Initialize the Database
 
