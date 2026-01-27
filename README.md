@@ -133,7 +133,7 @@ sermon-translation-system-fyp/
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.11 (Recommended)
 - Node.js 18+
 - PostgreSQL 18+
 - Microphone (for live ASR)
@@ -179,7 +179,7 @@ $env:WHISPER_DEVICE = "auto"
 
 # Alignment settings
 $env:ALIGNER_MODE = "rule"
-$env:LIVE_INITIAL_THRESHOLD = "0.55"
+$env:LIVE_INITIAL_THRESHOLD = "0.45"
 
 # Windows-specific (avoid symlink errors)
 $env:HF_HUB_DISABLE_SYMLINKS = "1"
@@ -249,8 +249,8 @@ npm run dev
 | `WHISPER_DEVICE` | `auto` | Device (auto/cuda/cpu) |
 | `WHISPER_COMPUTE` | — | Compute type (float16/int8) |
 | `ALIGNER_MODE` | `rule` | Alignment mode (rule/semantic) |
-| `LIVE_INITIAL_THRESHOLD` | `0.55` | Initial alignment score threshold |
-| `LIVE_LOOKAHEAD_LIMIT` | `30` | Max segments to search ahead |
+| `LIVE_INITIAL_THRESHOLD` | `0.45` | Initial alignment score threshold |
+| `LIVE_LOOKAHEAD_LIMIT` | `10` | Max segments to search ahead |
 | `HF_HUB_DISABLE_SYMLINKS` | `0` | Set to `1` on Windows |
 
 ---
