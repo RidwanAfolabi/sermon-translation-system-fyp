@@ -180,7 +180,7 @@ Then edit the `.env` file with your specific configuration values. See [`.env.ex
 - `WHISPER_BLOCK_SECS` - Audio chunk duration in seconds
 - `WHISPER_DEVICE` - Device selection (auto/cuda/cpu)
 - `LIVE_INITIAL_THRESHOLD` - Alignment threshold
-- `HF_HUB_DISABLE_SYMLINKS=1` - Required on Windows to avoid symlink errors
+- `HF_HUB_DISABLE_SYMLINKS` - Set to 1 on Windows to avoid symlink errors
 
 ### 5. Initialize the Database
 
