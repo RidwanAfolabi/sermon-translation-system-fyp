@@ -96,21 +96,29 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
     console.log('[ControlRoom] Broadcasting - skippedSegments:', skippedSegments?.length || 0, skippedSegments);
 
     // First, broadcast each skipped segment individually with isSkipped flag
+    // Dynamic timing: scales with word count so audience can read longer segments
     if (skippedSegments && skippedSegments.length > 0) {
+      let cumulativeDelay = 0;
+      
       skippedSegments.forEach((seg, idx) => {
+        const wordCount = (seg.english_text || '').split(/\s+/).length;
+        const displayTime = Math.max(2500, 1500 + wordCount * 100); // Min 2.5s, +100ms per word
+        
         setTimeout(() => {
-          console.log('[ControlRoom] Sending SKIPPED segment:', seg.english_text);
+          console.log(`[ControlRoom] Sending SKIPPED segment (${wordCount} words, ${displayTime}ms):`, seg.english_text?.substring(0, 40));
           broadcastChannelRef.current?.postMessage({
             type: 'subtitle',
             text: seg.english_text,
-            isSkipped: true, // Mark as skipped
+            isSkipped: true,
             order: seg.order,
             sermonTitle: sermonTitle,
             totalSegments: totalSegments,
             sessionTime: sessionTime,
             connected: connected,
           });
-        }, idx * 1500);
+        }, cumulativeDelay);
+        
+        cumulativeDelay += displayTime;
       });
       
       // Then broadcast the current (non-skipped) segment after all skipped ones
@@ -126,7 +134,7 @@ export function ControlRoom({ sermonId: initialSermonId, onNavigate }: ControlRo
           sessionTime: sessionTime,
           connected: connected,
         });
-      }, skippedSegments.length * 1500);
+      }, cumulativeDelay);
     } else {
       // No skipped segments, broadcast current directly
       broadcastChannelRef.current.postMessage({

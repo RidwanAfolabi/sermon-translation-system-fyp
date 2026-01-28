@@ -38,7 +38,7 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
     setCurrentSubtitle(prev => {
       if (prev.text && prev.text !== text) {
         setPreviousSubtitles(prevSubs => {
-          const newPrevious = [prev, ...prevSubs].slice(0, 5);
+          const newPrevious = [prev, ...prevSubs].slice(0, 7);
           return newPrevious;
         });
       }
@@ -144,8 +144,8 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
   const showSelector = showManualSelector || noControlRoom;
 
   // Display settings
-  const historyDisplayCount = 5;
-  const historyOpacity = ['opacity-80', 'opacity-70', 'opacity-60', 'opacity-50', 'opacity-40'];
+  const historyDisplayCount = 7;
+  const historyOpacity = ['opacity-85', 'opacity-75', 'opacity-65', 'opacity-55', 'opacity-45', 'opacity-35', 'opacity-25'];
   const orderedHistory = [...previousSubtitles.slice(0, historyDisplayCount)].reverse();
 
   return (
@@ -226,23 +226,26 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
       </div>
 
       {/* Main Display - Previous lines stack above current */}
-      <div className="flex-1 flex flex-col justify-center px-8 py-6 overflow-y-auto scroll-smooth">
-        <div className="max-w-6xl mx-auto w-full flex flex-col gap-6">
+      <div className="flex-1 flex flex-col justify-center px-4 py-4 overflow-y-auto scroll-smooth">
+        <div className="max-w-[95vw] xl:max-w-[90vw] mx-auto w-full flex flex-col gap-4">
           {/* Previous Subtitles (oldest at top, newest closest to current line) */}
           {orderedHistory.length > 0 && (
             <div className="space-y-3">
               <div className="space-y-2">
                 {orderedHistory.map((subtitle, index) => {
                   const opacityIndex = orderedHistory.length - 1 - index;
-                  const opacity = [0.8, 0.7, 0.6, 0.5, 0.4][opacityIndex] || 0.3;
+                  const opacity = [0.85, 0.75, 0.65, 0.55, 0.45, 0.35, 0.25][opacityIndex] || 0.2;
                   const isSkipped = subtitle.isSkipped === true;
-                  const textColor = isSkipped ? '#ef4444' : '#ffffff'; // Red for skipped, white for normal
+                  const textColor = isSkipped ? '#d97706' : '#ffffff'; // Amber for skipped
                   return (
-                    <div key={`history-${index}-${subtitle.text.slice(0, 20)}`} className="text-center px-4 subtitle-fade">
+                    <div key={`history-${index}-${subtitle.text.slice(0, 20)}`} className="text-center px-2 subtitle-fade">
                       <p 
-                        className="text-2xl md:text-3xl lg:text-4xl leading-relaxed font-medium"
+                        className={`text-xl md:text-2xl lg:text-3xl xl:text-4xl leading-snug font-medium ${
+                          isSkipped ? 'italic' : ''
+                        }`}
                         style={{ color: textColor, opacity: opacity }}
                       >
+                        {isSkipped && <span className="text-amber-500/70 text-base mr-2">⏪</span>}
                         {subtitle.text}
                       </p>
                     </div>
@@ -256,16 +259,30 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
           <div
             key={currentSubtitle.text || 'waiting'}
             ref={currentSubtitleRef}
-            className="text-center px-8 py-10 live-display-panel subtitle-fade"
+            className={`text-center px-4 py-6 subtitle-fade ${
+              currentSubtitle.isSkipped 
+                ? 'live-display-panel border-l-4 border-amber-500/50' 
+                : 'live-display-panel'
+            }`}
           >
+            {/* Catch-up indicator for skipped segments */}
+            {currentSubtitle.isSkipped && currentSubtitle.text && (
+              <div className="mb-3 flex items-center justify-center gap-2">
+                <span className="text-sm font-medium px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  ⏪ Catching up...
+                </span>
+              </div>
+            )}
             <p 
-              className="text-3xl md:text-4xl lg:text-5xl leading-relaxed font-semibold"
-              style={{ color: currentSubtitle.isSkipped ? '#ef4444' : '#ffffff' }}
+              className={`text-2xl md:text-3xl lg:text-4xl xl:text-5xl leading-normal font-semibold ${
+                currentSubtitle.isSkipped ? 'italic' : ''
+              }`}
+              style={{ color: currentSubtitle.isSkipped ? '#fbbf24' : '#ffffff' }}
             >
               {currentSubtitle.text ? (
                 <TypewriterText 
                   text={currentSubtitle.text} 
-                  wordDelay={250}
+                  wordDelay={currentSubtitle.isSkipped ? 120 : 250}
                 />
               ) : (
                 <span>
@@ -286,8 +303,8 @@ export function LiveDisplay({ onNavigate }: LiveDisplayProps) {
       <div className="flex-shrink-0 border-t border-white/10 px-4 py-2" style={{ backgroundColor: 'rgba(16, 24, 39, 0.82)' }}>
         <div className="flex items-center justify-between text-xs text-white/60">
           <span>Segment: {segmentOrder}/{totalSegments || '—'}</span>
-          <span className={currentSubtitle.isSkipped ? 'text-red-500 font-bold' : ''}>
-            {currentSubtitle.isSkipped ? 'SKIPPED SEGMENT' : 'Synced via BroadcastChannel'}
+          <span className={currentSubtitle.isSkipped ? 'text-amber-400 font-bold' : ''}>
+            {currentSubtitle.isSkipped ? '⏪ CATCHING UP' : 'Synced via BroadcastChannel'}
           </span>
           <span className="font-mono">{formatTime(sessionTime)}</span>
         </div>
