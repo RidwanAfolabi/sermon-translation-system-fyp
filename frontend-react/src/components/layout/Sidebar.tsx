@@ -1,7 +1,8 @@
-import { BarChart3, FileText, Upload, RefreshCw, Radio, Settings, HelpCircle, Home, ChevronLeft, CheckCircle, LogOut } from 'lucide-react';
+import { BarChart3, FileText, Upload, RefreshCw, Radio, Settings, HelpCircle, Home, ChevronLeft, CheckCircle, LogOut, Globe } from 'lucide-react';
 import { MosqueLogo } from '../IslamicPattern';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface SidebarProps {
   activeItem: string;
@@ -12,20 +13,21 @@ export function Sidebar({ activeItem, onItemClick }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isUtilityExpanded, setIsUtilityExpanded] = useState(true);
   const { logout, user } = useAuth();
+  const { t, language, toggleLanguage } = useLanguage();
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'upload', label: 'Upload Sermon', icon: Upload },
-    { id: 'library', label: 'Sermon Library', icon: FileText },
-    { id: 'vetting', label: 'Vetting Queue', icon: CheckCircle },
-    { id: 'translation', label: 'Translation', icon: RefreshCw },
-    { id: 'live', label: 'Live Control', icon: Radio },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'dashboard', label: t('nav.dashboard'), icon: Home },
+    { id: 'upload', label: t('nav.upload'), icon: Upload },
+    { id: 'library', label: t('nav.library'), icon: FileText },
+    { id: 'vetting', label: t('nav.vetting'), icon: CheckCircle },
+    { id: 'translation', label: t('nav.translation'), icon: RefreshCw },
+    { id: 'live', label: t('nav.live'), icon: Radio },
+    { id: 'analytics', label: t('nav.analytics'), icon: BarChart3 },
   ];
 
   const bottomItems = [
-    { id: 'settings', label: 'Settings', icon: Settings },
-    { id: 'help', label: 'Help', icon: HelpCircle },
+    { id: 'settings', label: t('nav.settings'), icon: Settings },
+    { id: 'help', label: t('nav.help'), icon: HelpCircle },
   ];
 
   return (
@@ -41,8 +43,8 @@ export function Sidebar({ activeItem, onItemClick }: SidebarProps) {
         <MosqueLogo className="text-[#c5a24a] flex-shrink-0" size={36} />
         {!isCollapsed && (
           <div className="overflow-hidden">
-            <div className="font-semibold text-white whitespace-nowrap">Sermon Translation</div>
-            <div className="text-xs text-white/50 uppercase tracking-[0.2em]">Control Suite</div>
+            <div className="font-semibold text-white whitespace-nowrap">{t('app.title')}</div>
+            <div className="text-xs text-white/50 uppercase tracking-[0.2em]">{t('app.subtitle')}</div>
           </div>
         )}
       </div>
@@ -119,23 +121,38 @@ export function Sidebar({ activeItem, onItemClick }: SidebarProps) {
           );
         })}
 
+        {/* Language Toggle Button */}
+          <button
+            onClick={toggleLanguage}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-md text-white/70 hover:bg-[#1b2430] hover:text-white transition-all duration-150"
+            title={t('lang.switchTo')}
+          >
+            <Globe size={20} className="flex-shrink-0" />
+            {!isCollapsed && (
+              <span className="flex items-center gap-2">
+                <span>{language === 'en' ? 'English' : 'B. Melayu'}</span>
+                <span className="text-xs text-white/50">→ {t('lang.toggle')}</span>
+              </span>
+            )}
+          </button>
+
         {/* Collapse Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-md text-white/60 hover:bg-[#1b2430] hover:text-white transition-all duration-150"
           >
             <ChevronLeft size={20} className={`flex-shrink-0 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />
-            {!isCollapsed && <span>Collapse</span>}
+            {!isCollapsed && <span>{t('nav.collapse')}</span>}
           </button>
 
           {/* Logout Button */}
           <button
             onClick={logout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-md text-[#f8b4b4] hover:bg-[#3b1a1a] transition-all duration-150"
-            title={isCollapsed ? 'Logout' : undefined}
+            title={isCollapsed ? t('nav.logout') : undefined}
           >
             <LogOut size={20} className="flex-shrink-0" />
-            {!isCollapsed && <span>Logout</span>}
+            {!isCollapsed && <span>{t('nav.logout')}</span>}
           </button>
         </div>
       </div>
