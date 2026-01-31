@@ -1,7 +1,6 @@
-import { Home, FileText, Upload, Edit3, Radio, BarChart3, CheckCircle, Settings, HelpCircle, Menu, X, ArrowLeft, Globe } from 'lucide-react';
+import { Home, FileText, Upload, Edit3, Radio, BarChart3, CheckCircle, Settings, HelpCircle, Menu, X, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { MosqueLogo } from '../IslamicPattern';
-import { useLanguage } from '../../context/LanguageContext';
 
 interface TopNavBarProps {
   currentPage: string;
@@ -13,21 +12,20 @@ interface TopNavBarProps {
 
 export function TopNavBar({ currentPage, onNavigate, title, showBackButton, backTo }: TopNavBarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { t, language, toggleLanguage } = useLanguage();
 
   const menuItems = [
-    { id: 'dashboard', label: t('nav.dashboard'), icon: Home },
-    { id: 'library', label: t('nav.library'), icon: FileText },
-    { id: 'upload', label: t('nav.upload'), icon: Upload },
-    { id: 'segments', label: t('nav.segments'), icon: Edit3 },
-    { id: 'vetting', label: t('nav.vetting'), icon: CheckCircle },
-    { id: 'live', label: t('nav.live'), icon: Radio },
-    { id: 'analytics', label: t('nav.analytics'), icon: BarChart3 },
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'library', label: 'Library', icon: FileText },
+    { id: 'upload', label: 'Upload', icon: Upload },
+    { id: 'segments', label: 'Segments', icon: Edit3 },
+    { id: 'vetting', label: 'Vetting', icon: CheckCircle },
+    { id: 'live', label: 'Live', icon: Radio },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   ];
 
   const secondaryItems = [
-    { id: 'settings', label: t('nav.settings'), icon: Settings },
-    { id: 'help', label: t('nav.help'), icon: HelpCircle },
+    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'help', label: 'Help', icon: HelpCircle },
   ];
 
   return (
@@ -42,7 +40,7 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
                 className="flex items-center gap-2 text-[#4b5563] hover:text-[#1f6f6d] transition-colors"
               >
                 <ArrowLeft size={20} />
-                <span className="hidden sm:inline">{t('common.back')}</span>
+                <span className="hidden sm:inline">Back</span>
               </button>
             ) : (
               <button
@@ -50,7 +48,7 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
                 className="flex items-center gap-2"
               >
                 <MosqueLogo className="text-[#c5a24a]" size={32} />
-                <span className="font-semibold text-[#101827] hidden sm:inline">{t('app.title')}</span>
+                <span className="font-semibold text-[#101827] hidden sm:inline">Sermon Translation</span>
               </button>
             )}
             
@@ -87,19 +85,8 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
             })}
           </div>
 
-          {/* Right: Language Toggle + Secondary Items + Mobile Menu */}
+          {/* Right: Secondary Items + Mobile Menu */}
           <div className="flex items-center gap-2">
-            {/* Language Toggle (desktop) */}
-            <button
-              onClick={toggleLanguage}
-              title={t('lang.switchTo')}
-              className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1f6f6d]/10 hover:bg-[#1f6f6d]/20 text-[#1f6f6d] font-semibold text-sm transition-all border border-[#1f6f6d]/20 hover:border-[#1f6f6d]/40"
-            >
-              <Globe size={18} />
-              <span>{language === 'en' ? 'EN' : 'BM'}</span>
-              <span className="text-xs opacity-70">→ {t('lang.toggle')}</span>
-            </button>
-
             {/* Secondary items (desktop) */}
             <div className="hidden md:flex items-center gap-1">
               {secondaryItems.map((item) => {
@@ -166,16 +153,6 @@ export function TopNavBar({ currentPage, onNavigate, title, showBackButton, back
             })}
             
             <div className="border-t border-[#e5ded0] pt-2 mt-2">
-              {/* Language Toggle (mobile) */}
-              <button
-                onClick={toggleLanguage}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-left text-[#1f6f6d] hover:bg-[#1f6f6d]/10 transition-all"
-              >
-                <Globe size={20} />
-                <span>{language === 'en' ? 'English' : 'B. Melayu'}</span>
-                <span className="text-xs opacity-70 ml-auto">→ {t('lang.toggle')}</span>
-              </button>
-
               {secondaryItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentPage === item.id;

@@ -2,7 +2,6 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LanguageProvider } from './context/LanguageContext';
 import { LiveStreamProvider } from './contexts/LiveStreamContext';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -76,21 +75,19 @@ const DEFAULT_PATH = PAGE_PATHS.dashboard;
 export default function App() {
   return (
     <AuthProvider>
-      <LanguageProvider>
-        <LiveStreamProvider>
-          <HashRouter>
-            <AppRouter />
-            <Toaster
-              position="top-right"
-              richColors
-              closeButton
-              toastOptions={{
-                style: { background: '#fffbf3', border: '1px solid #e5ded0', color: '#101827' },
-              }}
-            />
-          </HashRouter>
-        </LiveStreamProvider>
-      </LanguageProvider>
+      <LiveStreamProvider>
+        <HashRouter>
+          <AppRouter />
+          <Toaster
+            position="top-right"
+            richColors
+            closeButton
+            toastOptions={{
+              style: { background: '#fffbf3', border: '1px solid #e5ded0', color: '#101827' },
+            }}
+          />
+        </HashRouter>
+      </LiveStreamProvider>
     </AuthProvider>
   );
 }
