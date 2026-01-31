@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 # -------------------------------------------------------------------
 TRANSLATION_PROVIDER = os.getenv("TRANSLATION_PROVIDER", "marian")  # "marian" or "gemini"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")  # Default matches .env.example
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")  # Updated to Gemini 2.5 Flash Lite
 GEMINI_BATCH_SIZE = int(os.getenv("GEMINI_BATCH_SIZE", "10"))  # Translate up to 10 segments per API call
 
 # -------------------------------------------------------------------
