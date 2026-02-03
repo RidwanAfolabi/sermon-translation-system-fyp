@@ -1,5 +1,4 @@
-
-  import { defineConfig } from 'vite';
+import { defineConfig } from 'vite';
   import react from '@vitejs/plugin-react-swc';
   import path from 'path';
 
@@ -18,6 +17,7 @@
     server: {
       port: 3000,
       open: true,
+      allowedHosts: true,  // Allow all hosts
       proxy: {
         '/sermon': {
           target: 'http://127.0.0.1:8000',
