@@ -8,7 +8,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.routes import sermon_routes, live_routes
-from backend.api.routes import translation_routes
+from backend.api.routes import translation_routes, analytics_routes
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,7 @@ app.add_middleware(
 app.include_router(sermon_routes.router, tags=["Sermon"])
 app.include_router(translation_routes.router, tags=["Translation"])
 app.include_router(live_routes.router, prefix="/live", tags=["Live Streaming"])
+app.include_router(analytics_routes.router, tags=["Analytics"])
 
 @app.get("/")
 def root():
