@@ -1,1 +1,81 @@
-Generic single-database configuration.
+# Alembic Database Migrations
+
+This directory contains Alembic migration scripts for the Sermon Translation System database.
+
+## Overview
+
+Alembic manages PostgreSQL schema changes through versioned migration files. Each migration represents a specific change to the database structure.
+
+## Common Commands
+
+### Apply all pending migrations
+```bash
+alembic upgrade head
+```
+
+### Create a new migration (auto-detect changes)
+```bash
+alembic revision --autogenerate -m "description of change"
+```
+
+### Create a blank migration
+```bash
+alembic revision -m "description of change"
+```
+
+### Downgrade one migration
+```bash
+alembic downgrade -1
+```
+
+### View current migration version
+```bash
+alembic current
+```
+
+### View migration history
+```bash
+alembic history
+```
+
+### Mark a migration as complete without running it
+```bash
+alembic stamp head
+```
+
+## Migration Files
+
+Migration files are located in `versions/` directory. Each file contains:
+- **Revision ID**: Unique identifier for the migration
+- **Down revision**: Parent migration ID
+- **upgrade()**: Forward migration logic
+- **downgrade()**: Rollback logic
+
+## Important Notes
+
+1. **Environment Setup**: The `env.py` file includes a `sys.path` fix to ensure the `backend` module is importable during migrations.
+
+2. **Database URL**: Configured via environment variables in `.env`:
+   ```
+   DATABASE_URL=postgresql://user:password@localhost/dbname
+   ```
+
+3. **Conditional Operations**: Some migrations use conditional checks (e.g., checking if columns exist before dropping) to handle cases where migrations were manually applied or the database state is uncertain.
+
+4. **Initial Schema**: The `6eb32ce30a39_initial_schema.py` migration creates the base schema with the `sermons` table.
+
+## Troubleshooting
+
+- **ModuleNotFoundError**: Ensure `sys.path` modification in `env.py` is present
+- **Column already exists**: Use `alembic stamp <revision_id>` to mark already-applied migrations
+- **Migration conflicts**: Check `alembic history` and resolve merge conflicts in version files
+
+## Schema Overview
+
+Main tables managed by migrations:
+- `sermons`: Stores sermon metadata, original text, translations, and vetting status
+- Future tables for logging, feedback, and user management may be added
+
+---
+
+For more details, see the [Alembic documentation](https://alembic.sqlalchemy.org/).

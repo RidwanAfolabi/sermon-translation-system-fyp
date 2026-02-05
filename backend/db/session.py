@@ -8,7 +8,7 @@ Automatically loads environment variables from .env for local/dev usage.
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv  # 👈 added import
+from dotenv import load_dotenv
 
 # ---------------------------------------------------------------------
 # Load environment variables

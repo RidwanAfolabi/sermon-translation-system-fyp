@@ -261,8 +261,8 @@ pytest backend/tests/
 # Test specific module
 pytest backend/tests/test_api.py -v
 
-# Test ASR (requires microphone)
-python ml_pipeline/speech_recognition/whisper_mic_test.py
+# Test ASR with live microphone (requires microphone and active virtual environment)
+python -m ml_pipeline.speech_recognition.whisper_listener
 ```
 
 ---
@@ -274,20 +274,31 @@ python ml_pipeline/speech_recognition/whisper_mic_test.py
 CREATE TABLE sermons (
     sermon_id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
-    date DATE,
-    raw_text TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    speaker VARCHAR(150),
+    date_uploaded TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(32) DEFAULT 'draft',  -- draft, uploaded_raw, segmented, translated, vetted
+    raw_text TEXT
 );
 
 -- Segments table
 CREATE TABLE segments (
     segment_id SERIAL PRIMARY KEY,
-    sermon_id INTEGER REFERENCES sermons(sermon_id),
+    sermon_id INTEGER REFERENCES sermons(sermon_id) ON DELETE CASCADE,
     segment_order INTEGER NOT NULL,
     malay_text TEXT NOT NULL,
     english_text TEXT,
+    confidence_score FLOAT,
     is_vetted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Logs table
+CREATE TABLE logs (
+    id SERIAL PRIMARY KEY,
+    sermon_id INTEGER REFERENCES sermons(sermon_id) ON DELETE CASCADE,
+    level VARCHAR(16) DEFAULT 'INFO',
+    message TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -317,11 +328,14 @@ CREATE TABLE segments (
 - [x] React + TypeScript frontend
 - [x] Control Room & Live Display interfaces
 - [x] Vetting workflow & segment editor
-- [ ] Semantic alignment (sentence-transformers) — *in progress*
-- [ ] Translation model fine-tuning pipeline
-- [ ] Post-service logging and analytics
-- [ ] Docker containerization
-- [ ] Cloud deployment (AWS/GCP)
+- [x] Islamic terminology glossary (180+ terms)
+- [x] Gemini API integration for translation
+- [x] Logging system (logs table)
+- [ ] Semantic alignment (sentence-transformers) — *future enhancement*
+- [ ] Translation model fine-tuning pipeline — *future enhancement*
+- [ ] Advanced analytics dashboard — *future enhancement*
+- [ ] Docker containerization — *future enhancement*
+- [ ] Cloud deployment (AWS/GCP) — *future enhancement*
 
 ---
 
@@ -343,20 +357,20 @@ CREATE TABLE segments (
 | **Baseline** | Develop subtitle rendering prototype | 4 | ✅ Complete |
 | **Fine-Tune** | Prepare domain-specific training data | 5 | 🔄 In Progress |
 | **Fine-Tune** | Fine-tune MT model | 7 | ⏳ Pending |
-| **Fine-Tune** | Integrate glossary enforcement | 5 | ⏳ Pending |
+| **Fine-Tune** | Integrate glossary enforcement | 5 | ✅ Complete |
 | **Integration** | Integrate ASR with alignment module | 6 | ✅ Complete |
 | **Integration** | Implement real-time subtitle streaming | 6 | ✅ Complete |
-| **Integration** | Add logging & confidence flagging | 5 | 🔄 In Progress |
-| **Deployment** | Optimize model for local/offline use | 6 | ⏳ Pending |
-| **Deployment** | Test system on target hardware | 5 | ⏳ Pending |
-| **Deployment** | Validate performance in offline mode | 4 | ⏳ Pending |
+| **Integration** | Add logging & confidence flagging | 5 | ✅ Complete |
+| **Deployment** | Optimize model for local/offline use | 6 | ✅ Complete |
+| **Deployment** | Test system on target hardware | 5 | 🔄 In Progress |
+| **Deployment** | Validate performance in offline mode | 4 | ✅ Complete |
 | **Testing** | Conduct accuracy & glossary compliance tests | 5 | 🔄 In Progress |
 | **Testing** | Run mock sermon trials | 5 | 🔄 In Progress |
 | **Testing** | Evaluate latency & reliability | 4 | 🔄 In Progress |
-| **Testing** | Analyze logs & flagged segments | 4 | ⏳ Pending |
+| **Testing** | Analyze logs & flagged segments | 4 | 🔄 In Progress |
 | **Final** | Prepare technical documentation | 5 | 🔄 In Progress |
 | **Final** | Prepare user manual & training notes | 4 | ⏳ Pending |
-| **Final** | Final presentation & submission | 3 | ⏳ Pending |
+| **Final** | Final presentation & submission | 3 | ✅ Complete |
 
 **Total Estimated Duration:** ~120 days (~17 weeks)
 

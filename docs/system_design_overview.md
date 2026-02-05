@@ -52,10 +52,10 @@ Each phase corresponds to a distinct functional component within the overall sys
 - Display screen or projector for subtitles  
 
 ### **Software**
-- Python-based backend for translation (BERT) and synchronization logic  
-- Speech recognition framework (e.g., Whisper, Vosk, or DeepSpeech)  
-- Database (MySQL or SQLite) for bilingual data and log storage  
-- Web-based front-end for subtitle rendering and vetting interface  
+- Python-based FastAPI backend for translation (Marian MT / Google Gemini API) and synchronization logic  
+- Speech recognition framework (Faster-Whisper large-v3)  
+- Database (PostgreSQL with Alembic migrations) for bilingual data and log storage  
+- React + TypeScript frontend with Tailwind CSS for subtitle rendering and vetting interface  
 
 ---
 
@@ -63,8 +63,8 @@ Each phase corresponds to a distinct functional component within the overall sys
 
 | Module | Primary Function | Key Technologies |
 |:--------|:-----------------|:----------------|
-| Translation & Vetting | Pre-service translation, glossary enforcement, scholar review | Transformers, Flask/FastAPI, Pandas |
-| Synchronization & Subtitle | Real-time alignment and subtitle display | Speech recognition, WebSocket, JavaScript |
+| Translation & Vetting | Pre-service translation, glossary enforcement, scholar review | Marian MT / Google Gemini API, FastAPI, Pandas |
+| Synchronization & Subtitle | Real-time alignment and subtitle display | Faster-Whisper, WebSocket, React + TypeScript |
 | Logging & Feedback | Performance recording and model improvement | SQLAlchemy, Python logging, JSON |
 
 ---
