@@ -37,13 +37,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# ✅ Allow local file and localhost WebSocket origins
+# Allow local file and localhost WebSocket origins
 origins = [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
     "http://127.0.0.1:5500",  # if using Live Server extension in VSCode
     "http://localhost:5500",
-    "*"  # <-- You can keep this during dev, tighten later for production
+    "*"  # currently allowed all origin, need to tighten later for production
 ]
 
 # Optional: Allow local frontend or dashboard access
